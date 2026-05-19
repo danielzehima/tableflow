@@ -39,33 +39,33 @@ const features = [
 
 export default function Features() {
   return (
-    <section id="features" className="py-24 px-6 bg-white">
+    <section id="features" className="py-16 md:py-24 px-4 md:px-6 bg-white">
       <div className="max-w-7xl mx-auto">
-        <div className="text-center mb-16">
-          <span className="text-orange-500 font-semibold text-sm uppercase tracking-widest">
+        <div className="text-center mb-10 md:mb-16">
+          <span className="text-orange-500 font-semibold text-xs md:text-sm uppercase tracking-widest">
             Fonctionnalités
           </span>
-          <h2 className="text-4xl md:text-5xl font-extrabold text-slate-900 mt-3 mb-4">
+          <h2 className="text-3xl md:text-4xl lg:text-5xl font-extrabold text-slate-900 mt-3 mb-4">
             Tout ce dont vous avez besoin,{" "}
             <span className="text-orange-500">rien de superflu</span>
           </h2>
-          <p className="text-slate-500 text-lg max-w-2xl mx-auto">
+          <p className="text-slate-500 text-base md:text-lg max-w-2xl mx-auto">
             Conçu spécifiquement pour les restaurateurs. Pas de configuration
             compliquée, juste des outils qui fonctionnent.
           </p>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5 md:gap-8">
           {features.map((feature) => (
             <div
               key={feature.title}
-              className="p-8 rounded-2xl border border-slate-100 hover:border-orange-200 hover:shadow-xl hover:shadow-orange-50 transition-all duration-300 bg-white"
+              className="p-6 md:p-8 rounded-2xl border border-slate-100 hover:border-orange-200 hover:shadow-xl hover:shadow-orange-50 transition-all duration-300 bg-white"
             >
-              <div className="text-4xl mb-4">{feature.icon}</div>
-              <h3 className="text-xl font-bold text-slate-900 mb-3">
+              <div className="text-3xl md:text-4xl mb-3 md:mb-4">{feature.icon}</div>
+              <h3 className="text-lg md:text-xl font-bold text-slate-900 mb-2 md:mb-3">
                 {feature.title}
               </h3>
-              <p className="text-slate-500 leading-relaxed">
+              <p className="text-slate-500 leading-relaxed text-sm md:text-base">
                 {feature.description}
               </p>
             </div>

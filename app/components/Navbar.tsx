@@ -26,13 +26,13 @@ export default function Navbar() {
 
         <div className="flex items-center gap-3">
           <a
-            href="#"
+            href="/dashboard"
             className="text-slate-600 hover:text-slate-900 text-sm font-medium hidden md:block"
           >
             Connexion
           </a>
           <a
-            href="#"
+            href="/inscription"
             className="bg-orange-500 hover:bg-orange-600 text-white text-sm font-semibold px-4 py-2 rounded-lg transition-colors"
           >
             Essai gratuit
