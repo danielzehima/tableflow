@@ -9,6 +9,7 @@ type MenuItem = {
   description: string;
   price: number;
   available: boolean;
+  image_url?: string;
 };
 
 type MenuCategory = {
@@ -120,8 +121,22 @@ function MenuTab({
                   }`}
                 >
                   {qty > 0 && (
-                    <div className="absolute left-0 top-0 bottom-0 w-1 bg-orange-500" />
+                    <div className="absolute left-0 top-0 bottom-0 w-1 bg-orange-500 z-10" />
                   )}
+
+                  {/* Photo du plat */}
+                  {item.image_url && (
+                    <div className="aspect-[16/9] overflow-hidden bg-slate-100">
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img
+                        src={item.image_url}
+                        alt={item.name}
+                        className="w-full h-full object-cover pointer-events-none"
+                        loading="lazy"
+                      />
+                    </div>
+                  )}
+
                   <div className="p-4">
                     <div className="flex items-start justify-between gap-3">
                       <div className="flex-1 min-w-0">
@@ -176,6 +191,7 @@ function MenuTab({
 function CartDrawer({
   cart,
   restaurantId,
+  initialTable,
   onClose,
   onRemove,
   onAdd,
@@ -183,12 +199,13 @@ function CartDrawer({
 }: {
   cart: CartItem[];
   restaurantId: string;
+  initialTable?: string;
   onClose: () => void;
   onRemove: (itemId: string) => void;
   onAdd: (item: MenuItem) => void;
   onClear: () => void;
 }) {
-  const [tableNumber, setTableNumber] = useState("");
+  const [tableNumber, setTableNumber] = useState(initialTable ?? "");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
@@ -313,15 +330,22 @@ function CartDrawer({
             </div>
             <div>
               <label className="block text-sm font-semibold text-slate-700 mb-1.5">
-                Numéro de table
+                Table
               </label>
-              <input
-                type="text"
-                value={tableNumber}
-                onChange={(e) => { setTableNumber(e.target.value); setError(null); }}
-                placeholder="Ex : Table 5"
-                className="w-full border border-slate-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400 transition"
-              />
+              {initialTable ? (
+                <div className="flex items-center gap-2 bg-orange-50 border border-orange-200 rounded-xl px-4 py-3">
+                  <span className="text-orange-600 font-extrabold text-sm flex-1">{tableNumber}</span>
+                  <span className="text-orange-400 text-xs">détectée via QR</span>
+                </div>
+              ) : (
+                <input
+                  type="text"
+                  value={tableNumber}
+                  onChange={(e) => { setTableNumber(e.target.value); setError(null); }}
+                  placeholder="Ex : Table 5"
+                  className="w-full border border-slate-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400 transition"
+                />
+              )}
             </div>
             <button
               onClick={handleOrder}
@@ -514,7 +538,13 @@ function InfoTab({ restaurant }: { restaurant: Restaurant }) {
 
 // ── Page principale ───────────────────────────────────────────────────────────
 
-export default function RestaurantPageClient({ restaurant }: { restaurant: Restaurant }) {
+export default function RestaurantPageClient({
+  restaurant,
+  tableParam = "",
+}: {
+  restaurant: Restaurant;
+  tableParam?: string;
+}) {
   const [activeTab, setActiveTab] = useState<Tab>("menu");
   const [cart, setCart] = useState<CartItem[]>([]);
   const [cartOpen, setCartOpen] = useState(false);
@@ -546,9 +576,16 @@ export default function RestaurantPageClient({ restaurant }: { restaurant: Resta
         <div className="max-w-5xl mx-auto px-4 h-14 flex items-center justify-between">
           <div className="min-w-0">
             <div className="font-extrabold text-slate-900 truncate leading-tight">{restaurant.name}</div>
-            {restaurant.cuisine && (
-              <div className="text-xs text-slate-400 leading-tight">{restaurant.cuisine}</div>
-            )}
+            <div className="flex items-center gap-2">
+              {restaurant.cuisine && (
+                <span className="text-xs text-slate-400 leading-tight">{restaurant.cuisine}</span>
+              )}
+              {tableParam && (
+                <span className="text-xs font-bold text-orange-600 bg-orange-50 px-2 py-0.5 rounded-full leading-tight">
+                  {tableParam}
+                </span>
+              )}
+            </div>
           </div>
           <div className="flex items-center gap-2 shrink-0 ml-3">
             <button
@@ -573,16 +610,16 @@ export default function RestaurantPageClient({ restaurant }: { restaurant: Resta
       </nav>
 
       {/* ── Hero ── */}
-      <section className="relative h-64 md:h-96 pt-14">
+      <section className="relative h-64 md:h-96 pt-14 overflow-hidden">
         <Image
           src={restaurant.coverImage}
           alt={restaurant.name}
           fill
-          className="object-cover object-center"
+          className="object-cover object-center pointer-events-none"
           priority
         />
         {/* Gradient overlay */}
-        <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/40 to-black/10" />
+        <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/40 to-black/10 pointer-events-none" />
 
         {/* Hero content */}
         <div className="absolute bottom-0 left-0 right-0 px-4 pb-6">
@@ -681,6 +718,7 @@ export default function RestaurantPageClient({ restaurant }: { restaurant: Resta
         <CartDrawer
           cart={cart}
           restaurantId={restaurant.id}
+          initialTable={tableParam}
           onClose={() => setCartOpen(false)}
           onRemove={removeFromCart}
           onAdd={addToCart}

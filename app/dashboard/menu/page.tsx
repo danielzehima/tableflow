@@ -9,6 +9,7 @@ type MenuItem = {
   price: number;
   available: boolean;
   position: number;
+  image_url?: string | null;
 };
 
 type Category = {
@@ -34,6 +35,7 @@ const EMPTY_FORM = {
   description: "",
   price: "",
   available: true,
+  image_url: "",
 };
 
 export default function MenuPage() {
@@ -51,7 +53,7 @@ export default function MenuPage() {
   // Modal édition
   const [editItem, setEditItem] = useState<MenuItem | null>(null);
   const [editCategoryId, setEditCategoryId] = useState("");
-  const [editForm, setEditForm] = useState({ name: "", description: "", price: "", available: true });
+  const [editForm, setEditForm] = useState({ name: "", description: "", price: "", available: true, image_url: "" });
   const [editSaving, setEditSaving] = useState(false);
   const [editError, setEditError] = useState("");
 
@@ -93,6 +95,7 @@ export default function MenuPage() {
       description: item.description,
       price: String(item.price),
       available: item.available,
+      image_url: item.image_url ?? "",
     });
     setEditError("");
   }
@@ -134,6 +137,7 @@ export default function MenuPage() {
           description: form.description.trim(),
           price: Number(form.price),
           available: form.available,
+          image_url: form.image_url.trim() || null,
         }),
       });
       const data = await res.json();
@@ -160,6 +164,7 @@ export default function MenuPage() {
         description: editForm.description.trim(),
         price: Number(editForm.price),
         available: editForm.available,
+        image_url: editForm.image_url.trim() || null,
       }),
     });
 
@@ -264,6 +269,13 @@ export default function MenuPage() {
                 {cat.menu_items.map((item) => (
                   <div key={item.id}
                     className="px-4 md:px-6 py-4 flex items-center justify-between gap-4 hover:bg-slate-50 transition-colors">
+                    {/* Thumbnail */}
+                    {item.image_url ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img src={item.image_url} alt={item.name} className="w-12 h-12 rounded-xl object-cover shrink-0 border border-slate-100" />
+                    ) : (
+                      <div className="w-12 h-12 rounded-xl bg-slate-100 shrink-0 flex items-center justify-center text-slate-300 text-xl">🍽️</div>
+                    )}
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center gap-2 flex-wrap">
                         <span className="font-semibold text-slate-900 text-sm">{item.name}</span>
@@ -393,6 +405,16 @@ export default function MenuPage() {
                   placeholder="Ex : 3500"
                 />
               </div>
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1.5">
+                  Photo du plat <span className="text-green-700 font-normal">(optionnel)</span>
+                </label>
+                <ImageUpload
+                  value={form.image_url}
+                  restaurantId={restaurantId}
+                  onChange={(url) => setForm({ ...form, image_url: url })}
+                />
+              </div>
               <div className="flex items-center justify-between py-2">
                 <span className="text-sm font-medium text-slate-700">Disponible immédiatement</span>
                 <button
@@ -474,6 +496,16 @@ export default function MenuPage() {
                   className="w-full border border-slate-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400"
                 />
               </div>
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1.5">
+                  Photo du plat <span className="text-green-700 font-normal">(optionnel)</span>
+                </label>
+                <ImageUpload
+                  value={editForm.image_url}
+                  restaurantId={restaurantId}
+                  onChange={(url) => setEditForm({ ...editForm, image_url: url })}
+                />
+              </div>
               <div className="flex items-center justify-between py-2">
                 <span className="text-sm font-medium text-slate-700">Disponible</span>
                 <button
@@ -497,6 +529,100 @@ export default function MenuPage() {
             </form>
           </div>
         </div>
+      )}
+    </div>
+  );
+}
+
+// ── Composant upload d'image ─────────────────────────────────────────────────
+
+function ImageUpload({
+  value,
+  restaurantId,
+  onChange,
+}: {
+  value: string;
+  restaurantId: string;
+  onChange: (url: string) => void;
+}) {
+  const [uploading, setUploading] = useState(false);
+  const [uploadError, setUploadError] = useState("");
+
+  async function handleFile(file: File) {
+    setUploadError("");
+    setUploading(true);
+    const fd = new FormData();
+    fd.append("file", file);
+    fd.append("restaurant_id", restaurantId);
+
+    try {
+      const res = await fetch("/api/menu/upload", { method: "POST", body: fd });
+      const data = await res.json();
+      if (res.ok) {
+        onChange(data.url);
+      } else {
+        setUploadError(data.error ?? "Erreur lors de l'upload");
+      }
+    } catch {
+      setUploadError("Impossible de contacter le serveur");
+    } finally {
+      setUploading(false);
+    }
+  }
+
+  if (value) {
+    return (
+      <div className="relative rounded-xl overflow-hidden aspect-[16/9] bg-slate-100 border border-slate-100">
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src={value} alt="Photo du plat" className="w-full h-full object-cover" />
+        <button
+          type="button"
+          onClick={() => onChange("")}
+          className="absolute top-2 right-2 w-7 h-7 bg-white/90 backdrop-blur rounded-full flex items-center justify-center text-slate-600 hover:text-red-500 hover:bg-white transition-colors shadow text-sm font-bold"
+        >
+          ✕
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <div>
+      <label
+        className={`flex flex-col items-center justify-center border-2 border-dashed rounded-xl px-4 py-7 transition-colors ${
+          uploading
+            ? "border-orange-300 bg-orange-50 cursor-wait"
+            : "border-slate-200 hover:border-orange-300 hover:bg-orange-50/40 cursor-pointer"
+        }`}
+      >
+        <input
+          type="file"
+          accept="image/jpeg,image/png,image/webp"
+          className="hidden"
+          disabled={uploading}
+          onChange={(e) => {
+            const file = e.target.files?.[0];
+            if (file) handleFile(file);
+            e.target.value = "";
+          }}
+        />
+        {uploading ? (
+          <>
+            <div className="w-7 h-7 border-2 border-orange-500 border-t-transparent rounded-full animate-spin mb-2" />
+            <span className="text-sm text-orange-600 font-semibold">Upload en cours…</span>
+          </>
+        ) : (
+          <>
+            <svg className="w-8 h-8 text-slate-300 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+            </svg>
+            <span className="text-sm font-semibold text-slate-700">Choisir une photo</span>
+            <span className="text-xs text-slate-400 mt-1">JPG · PNG · WebP — max 5 Mo</span>
+          </>
+        )}
+      </label>
+      {uploadError && (
+        <p className="text-red-500 text-xs mt-1.5">{uploadError}</p>
       )}
     </div>
   );

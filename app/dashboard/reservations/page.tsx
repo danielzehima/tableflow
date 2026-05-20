@@ -119,6 +119,27 @@ export default function ReservationsPage() {
     setReservations((prev) => prev.filter((r) => r.id !== id));
   }
 
+  function exportCSV() {
+    const headers = ["Client", "Téléphone", "Date", "Heure", "Personnes", "Statut", "Message"];
+    const rows = reservations.map((r) => [
+      `"${r.customer_name}"`,
+      r.customer_phone,
+      new Date(r.date).toLocaleDateString("fr-FR"),
+      r.time,
+      r.guests,
+      r.status,
+      `"${(r.message ?? "").replace(/"/g, '""')}"`,
+    ]);
+    const csv = [headers, ...rows].map((row) => row.join(";")).join("\n");
+    const blob = new Blob(["﻿" + csv], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `reservations-${new Date().toLocaleDateString("fr-CA")}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
   const today = new Date().toISOString().split("T")[0];
   const upcoming = reservations.filter((r) => r.date >= today && r.status !== "Annulée");
   const past = reservations.filter((r) => r.date < today || r.status === "Annulée");
@@ -143,15 +164,26 @@ export default function ReservationsPage() {
             {upcoming.length} à venir · {past.length} passée{past.length > 1 ? "s" : ""}
           </p>
         </div>
-        <button
-          onClick={() => { setShowNew(true); setFormError(""); setForm({ ...EMPTY_FORM }); }}
-          className="inline-flex items-center gap-2 bg-orange-500 hover:bg-orange-600 text-white text-sm font-semibold px-4 py-2.5 rounded-xl transition-colors"
-        >
-          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-          </svg>
-          Nouvelle réservation
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={exportCSV}
+            className="inline-flex items-center gap-2 bg-white border border-slate-200 hover:border-orange-300 text-slate-700 hover:text-orange-600 text-sm font-semibold px-4 py-2.5 rounded-xl transition-colors"
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+            </svg>
+            Exporter CSV
+          </button>
+          <button
+            onClick={() => { setShowNew(true); setFormError(""); setForm({ ...EMPTY_FORM }); }}
+            className="inline-flex items-center gap-2 bg-orange-500 hover:bg-orange-600 text-white text-sm font-semibold px-4 py-2.5 rounded-xl transition-colors"
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+            </svg>
+            Nouvelle réservation
+          </button>
+        </div>
       </div>
 
       {/* Modal nouvelle réservation */}

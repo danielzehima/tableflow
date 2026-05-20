@@ -3,7 +3,7 @@ import { supabase } from "../../../lib/supabase-server";
 
 export async function POST(req: Request) {
   const body = await req.json();
-  const { category_id, name, description, price, available } = body;
+  const { category_id, name, description, price, available, image_url } = body;
 
   if (!category_id || !name || price === undefined || price === "") {
     return NextResponse.json(
@@ -31,6 +31,7 @@ export async function POST(req: Request) {
       price: Number(price),
       available: available ?? true,
       position,
+      image_url: image_url || null,
     })
     .select()
     .single();

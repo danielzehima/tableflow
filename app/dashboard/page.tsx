@@ -247,7 +247,7 @@ export default async function DashboardPage() {
           {[
             { icon: "➕", label: "Ajouter un plat", href: "/dashboard/menu" },
             { icon: "📋", label: "Modifier le menu", href: "/dashboard/menu" },
-            { icon: "📊", label: "Voir les analytics", href: "/dashboard/commandes" },
+            { icon: "📊", label: "Voir les analytics", href: "/dashboard/analytics" },
             { icon: "🌐", label: "Voir ma page publique", href: `/${restaurant?.slug ?? "le-bonus"}` },
             { icon: "⚙️", label: "Paramètres", href: "/dashboard/parametres" },
           ].map(({ icon, label, href }) => (

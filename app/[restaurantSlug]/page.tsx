@@ -4,10 +4,12 @@ import RestaurantPageClient from "./RestaurantPageClient";
 
 type Props = {
   params: Promise<{ restaurantSlug: string }>;
+  searchParams: Promise<{ table?: string }>;
 };
 
-export default async function RestaurantPage({ params }: Props) {
+export default async function RestaurantPage({ params, searchParams }: Props) {
   const { restaurantSlug } = await params;
+  const { table: tableParam } = await searchParams;
 
   const { data: restaurant, error } = await supabase
     .from("restaurants")
@@ -36,12 +38,14 @@ export default async function RestaurantPage({ params }: Props) {
         description: string;
         price: number;
         available: boolean;
+        image_url?: string | null;
       }) => ({
         id: item.id,
         name: item.name,
         description: item.description,
         price: item.price,
         available: item.available,
+        image_url: item.image_url ?? undefined,
       })),
   }));
 
@@ -60,5 +64,5 @@ export default async function RestaurantPage({ params }: Props) {
     menu,
   };
 
-  return <RestaurantPageClient restaurant={restaurantData} />;
+  return <RestaurantPageClient restaurant={restaurantData} tableParam={tableParam ?? ""} />;
 }

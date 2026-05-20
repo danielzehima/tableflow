@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { supabaseClient } from "../../lib/supabase-client";
 
 type OrderStatus = "pending" | "preparing" | "ready" | "served" | "paid" | "cancelled";
@@ -36,6 +36,20 @@ export default function CuisinePage() {
   const [updating, setUpdating] = useState<string | null>(null);
   const [connected, setConnected] = useState(false);
   const [, setTick] = useState(0);
+  const [soundEnabled, setSoundEnabled] = useState(true);
+  const audioCtxRef = useRef<AudioContext | null>(null);
+  const soundEnabledRef = useRef(true);
+
+  function toggleSound() {
+    if (!audioCtxRef.current) {
+      try {
+        const Ctx = window.AudioContext ?? (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
+        audioCtxRef.current = new Ctx();
+      } catch { /* ignore */ }
+    }
+    if (audioCtxRef.current?.state === "suspended") void audioCtxRef.current.resume();
+    setSoundEnabled((prev) => { soundEnabledRef.current = !prev; return !prev; });
+  }
 
   const isActive = (status: string) =>
     status === "pending" || status === "preparing" || status === "ready" ||
@@ -77,6 +91,24 @@ export default function CuisinePage() {
         { event: "*", schema: "public", table: "orders", filter: `restaurant_id=eq.${restaurantId}` },
         (payload) => {
           if (payload.eventType === "INSERT") {
+            if (soundEnabledRef.current && audioCtxRef.current) {
+              try {
+                const ctx = audioCtxRef.current;
+                [880, 660].forEach((freq, i) => {
+                  const osc = ctx.createOscillator();
+                  const g = ctx.createGain();
+                  osc.connect(g);
+                  g.connect(ctx.destination);
+                  osc.frequency.value = freq;
+                  osc.type = "sine";
+                  const t = ctx.currentTime + i * 0.18;
+                  g.gain.setValueAtTime(0.35, t);
+                  g.gain.exponentialRampToValueAtTime(0.001, t + 0.25);
+                  osc.start(t);
+                  osc.stop(t + 0.25);
+                });
+              } catch { /* Audio API indisponible */ }
+            }
             const o = normalize(payload.new as Order);
             if (isActive(o.status)) {
               setOrders((prev) => [...prev, o].sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()));
@@ -143,11 +175,18 @@ export default function CuisinePage() {
             {orders.length === 0 ? "Aucune commande active" : `${orders.length} commande${orders.length > 1 ? "s" : ""} active${orders.length > 1 ? "s" : ""}`}
           </p>
         </div>
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-3">
           <div className="flex items-center gap-1.5 text-xs">
             <div className={`w-2 h-2 rounded-full ${connected ? "bg-emerald-400 animate-pulse" : "bg-slate-500"}`} />
             <span className="text-slate-200">{connected ? "En direct" : "Connexion…"}</span>
           </div>
+          <button
+            onClick={toggleSound}
+            title={soundEnabled ? "Désactiver le son" : "Activer le son (cliquer pour débloquer sur iOS)"}
+            className={`p-2 rounded-xl text-base transition-colors ${soundEnabled ? "bg-orange-500/20 text-orange-400 hover:bg-orange-500/30" : "bg-slate-800 text-slate-500 hover:text-slate-400"}`}
+          >
+            {soundEnabled ? "🔔" : "🔕"}
+          </button>
         </div>
       </div>
 

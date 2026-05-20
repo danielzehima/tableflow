@@ -191,6 +191,25 @@ export default function CommandesPage() {
     setOrderSaving(false);
   }
 
+  function exportCSV() {
+    const headers = ["Table", "Articles", "Total (FCFA)", "Statut", "Date"];
+    const rows = filtered.map((o) => [
+      `"${o.table_number}"`,
+      `"${o.items.replace(/"/g, '""')}"`,
+      Number(o.total),
+      STATUS_CONFIG[o.status]?.label ?? o.status,
+      `"${new Date(o.created_at).toLocaleString("fr-FR")}"`,
+    ]);
+    const csv = [headers, ...rows].map((r) => r.join(";")).join("\n");
+    const blob = new Blob(["﻿" + csv], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `commandes-${new Date().toLocaleDateString("fr-CA")}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
   const today = new Date().toLocaleDateString("fr-CA");
   const todayOrders = orders.filter((o) => o.created_at?.startsWith(today));
   const activeOrders = orders.filter((o) => ["pending", "preparing", "ready"].includes(o.status));
@@ -221,6 +240,15 @@ export default function CommandesPage() {
             <div className={`w-2 h-2 rounded-full ${connected ? "bg-emerald-400 animate-pulse" : "bg-slate-400"}`} />
             <span className="text-green-700">{connected ? "En direct" : "Hors ligne"}</span>
           </div>
+          <button
+            onClick={exportCSV}
+            className="inline-flex items-center gap-2 bg-white border border-slate-200 hover:border-orange-300 text-slate-700 hover:text-orange-600 text-sm font-semibold px-4 py-2 rounded-xl transition-colors"
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+            </svg>
+            Exporter CSV
+          </button>
           <button
             onClick={() => { setShowNewOrder(true); setOrderError(""); setOrderForm({ ...EMPTY_ORDER }); }}
             className="inline-flex items-center gap-2 bg-orange-500 hover:bg-orange-600 text-white text-sm font-semibold px-4 py-2 rounded-xl transition-colors"
