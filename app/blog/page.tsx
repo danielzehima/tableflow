@@ -1,84 +1,92 @@
-import Navbar from "../components/Navbar";
-import Footer from "../components/Footer";
+import Link from "next/link";
+import { supabase } from "../lib/supabase-server";
 
-const articles = [
-  {
-    category: "Conseil",
-    title: "5 façons d'augmenter vos réservations en ligne",
-    excerpt:
-      "Découvrez comment optimiser votre page publique TableFlow pour attirer plus de clients et réduire les no-shows.",
-    date: "12 mai 2026",
-    readTime: "4 min",
-    emoji: "📈",
-  },
-  {
-    category: "Fonctionnalité",
-    title: "Nouveau : notifications SMS en temps réel",
-    excerpt:
-      "Vos clients reçoivent désormais une confirmation par SMS dès qu'une réservation est acceptée ou modifiée.",
-    date: "5 mai 2026",
-    readTime: "2 min",
-    emoji: "💬",
-  },
-  {
-    category: "Guide",
-    title: "Créer un menu digital qui donne envie",
-    excerpt:
-      "Photos, descriptions courtes, mise en avant des plats du jour — les bonnes pratiques pour un menu qui convertit.",
-    date: "28 avr. 2026",
-    readTime: "6 min",
-    emoji: "📋",
-  },
-];
+type Article = {
+  id: string; title: string; slug: string; excerpt: string;
+  category: string; cover_emoji: string; author: string;
+  reading_time: number; created_at: string;
+};
 
-export default function BlogPage() {
+const CATEGORY_COLORS: Record<string, string> = {
+  "Conseil": "bg-blue-100 text-blue-700",
+  "Guide": "bg-emerald-100 text-emerald-700",
+  "Nouveauté": "bg-orange-100 text-orange-700",
+  "Article": "bg-slate-100 text-slate-700",
+};
+
+function fmt(date: string) {
+  return new Date(date).toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric" });
+}
+
+export default async function BlogPage() {
+  const { data: articles } = await supabase
+    .from("articles")
+    .select("id, title, slug, excerpt, category, cover_emoji, author, reading_time, created_at")
+    .eq("published", true)
+    .order("created_at", { ascending: false });
+
+  const list: Article[] = articles ?? [];
+
   return (
-    <>
-      <Navbar />
-      <main className="pt-24 min-h-screen bg-slate-50">
-        <div className="max-w-3xl mx-auto px-4 py-12 md:py-20">
-          <div className="text-center mb-10 md:mb-14">
-            <span className="text-orange-500 font-semibold text-xs uppercase tracking-widest">
-              Blog
-            </span>
-            <h1 className="text-3xl md:text-4xl font-extrabold text-slate-900 mt-2 mb-2">
-              Ressources pour restaurateurs
-            </h1>
-            <p className="text-slate-500 text-sm md:text-base">
-              Conseils, nouveautés et guides pour développer votre activité.
-            </p>
-          </div>
+    <div className="min-h-screen bg-slate-50">
+      {/* Header */}
+      <div className="bg-white border-b border-slate-100">
+        <div className="max-w-5xl mx-auto px-4 md:px-6 py-12 md:py-16 text-center">
+          <span className="text-orange-500 font-semibold text-xs uppercase tracking-widest">Blog</span>
+          <h1 className="text-3xl md:text-5xl font-extrabold text-slate-900 mt-3 mb-4">
+            Ressources & Conseils
+          </h1>
+          <p className="text-slate-500 text-base md:text-lg max-w-xl mx-auto">
+            Guides pratiques, nouveautés et bonnes pratiques pour les restaurateurs qui veulent grandir.
+          </p>
+          <Link href="/" className="inline-flex items-center gap-2 mt-6 text-slate-400 hover:text-slate-600 text-sm transition-colors">
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+            </svg>
+            Retour à l&apos;accueil
+          </Link>
+        </div>
+      </div>
 
-          <div className="space-y-5">
-            {articles.map((article) => (
-              <a
-                key={article.title}
-                href="#"
-                className="flex items-start gap-4 bg-white rounded-2xl border border-slate-200 p-5 md:p-6 shadow-sm hover:border-orange-200 hover:shadow-md transition-all"
-              >
-                <div className="text-3xl shrink-0">{article.emoji}</div>
-                <div className="min-w-0">
-                  <div className="flex items-center gap-2 mb-1">
-                    <span className="text-xs font-semibold text-orange-500 uppercase tracking-wide">
+      {/* Articles */}
+      <main className="max-w-5xl mx-auto px-4 md:px-6 py-10 md:py-16">
+        {list.length === 0 ? (
+          <div className="text-center py-20 text-slate-400">
+            <div className="text-5xl mb-4">✍️</div>
+            <p className="text-lg font-semibold text-slate-500">Aucun article publié pour le moment.</p>
+            <p className="text-sm mt-2">Revenez bientôt !</p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {list.map((article) => (
+              <Link key={article.id} href={`/blog/${article.slug}`}
+                className="group bg-white rounded-2xl border border-slate-100 hover:border-orange-200 shadow-sm hover:shadow-md transition-all overflow-hidden flex flex-col">
+                <div className="h-32 bg-gradient-to-br from-orange-50 to-amber-50 flex items-center justify-center text-5xl group-hover:scale-105 transition-transform duration-300">
+                  {article.cover_emoji}
+                </div>
+                <div className="p-5 flex flex-col flex-1">
+                  <div className="flex items-center gap-2 mb-3">
+                    <span className={`text-xs font-bold px-2.5 py-1 rounded-full ${CATEGORY_COLORS[article.category] ?? "bg-slate-100 text-slate-600"}`}>
                       {article.category}
                     </span>
-                    <span className="text-xs text-slate-400">
-                      · {article.date} · {article.readTime} de lecture
-                    </span>
+                    <span className="text-slate-400 text-xs">{article.reading_time} min</span>
                   </div>
-                  <h2 className="text-base md:text-lg font-bold text-slate-900 mb-1 leading-snug">
+                  <h2 className="font-bold text-slate-900 text-base leading-snug mb-2 group-hover:text-orange-600 transition-colors line-clamp-2">
                     {article.title}
                   </h2>
-                  <p className="text-slate-500 text-sm leading-relaxed line-clamp-2">
+                  <p className="text-slate-500 text-sm leading-relaxed line-clamp-3 flex-1">
                     {article.excerpt}
                   </p>
+                  <div className="mt-4 pt-4 border-t border-slate-100 flex items-center justify-between">
+                    <span className="text-slate-400 text-xs">{fmt(article.created_at)}</span>
+                    <span className="text-orange-500 text-xs font-semibold group-hover:underline">Lire →</span>
+                  </div>
                 </div>
-              </a>
+              </Link>
             ))}
           </div>
-        </div>
+        )}
       </main>
-      <Footer />
-    </>
+    </div>
   );
 }

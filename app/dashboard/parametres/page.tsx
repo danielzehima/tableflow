@@ -131,7 +131,7 @@ export default function ParametresPage() {
   }
 
   if (!restaurant) {
-    return <div className="text-center py-16 text-slate-400">Restaurant introuvable</div>;
+    return <div className="text-center py-16 text-green-700">Restaurant introuvable</div>;
   }
 
   const coverPreview = form.cover_image || "/hero-restaurant.png";
@@ -141,7 +141,7 @@ export default function ParametresPage() {
       {/* Header */}
       <div>
         <h1 className="text-xl md:text-2xl font-extrabold text-slate-900">Paramètres</h1>
-        <p className="text-slate-400 text-sm mt-0.5">
+        <p className="text-green-700 text-sm mt-0.5">
           Informations de votre restaurant · Page publique :{" "}
           <a href={`/${restaurant.slug}`} target="_blank" className="text-orange-500 hover:underline">
             /{restaurant.slug}
@@ -199,7 +199,7 @@ export default function ParametresPage() {
             />
           </div>
           <div className="px-5 py-3 border-t border-slate-50">
-            <p className="text-xs text-slate-400">
+            <p className="text-xs text-green-700">
               Image de couverture affichée sur votre page publique · Format JPG, PNG ou WebP · Recommandé : 1200×400 px
             </p>
             {uploadError && (
@@ -210,7 +210,7 @@ export default function ParametresPage() {
 
         {/* Informations générales */}
         <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-6 space-y-5">
-          <h2 className="font-bold text-sm uppercase tracking-wide text-slate-400">
+          <h2 className="font-bold text-sm uppercase tracking-wide text-green-700">
             Informations générales
           </h2>
           <Field label="Nom du restaurant" name="name" value={form.name ?? ""} onChange={handleChange} />
@@ -221,7 +221,7 @@ export default function ParametresPage() {
 
         {/* Contact & localisation */}
         <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-6 space-y-5">
-          <h2 className="font-bold text-sm uppercase tracking-wide text-slate-400">
+          <h2 className="font-bold text-sm uppercase tracking-wide text-green-700">
             Contact & localisation
           </h2>
           <Field label="Adresse" name="address" value={form.address ?? ""} onChange={handleChange} placeholder="Ex : Abidjan, Cocody" />

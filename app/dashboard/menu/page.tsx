@@ -42,11 +42,18 @@ export default function MenuPage() {
   const [restaurantId, setRestaurantId] = useState("");
   const [toggling, setToggling] = useState<string | null>(null);
 
-  // Modal
+  // Modal ajout
   const [showModal, setShowModal] = useState(false);
   const [form, setForm] = useState({ ...EMPTY_FORM });
   const [saving, setSaving] = useState(false);
   const [formError, setFormError] = useState("");
+
+  // Modal édition
+  const [editItem, setEditItem] = useState<MenuItem | null>(null);
+  const [editCategoryId, setEditCategoryId] = useState("");
+  const [editForm, setEditForm] = useState({ name: "", description: "", price: "", available: true });
+  const [editSaving, setEditSaving] = useState(false);
+  const [editError, setEditError] = useState("");
 
   useEffect(() => {
     async function init() {
@@ -67,10 +74,7 @@ export default function MenuPage() {
   }
 
   function openModal() {
-    setForm({
-      ...EMPTY_FORM,
-      categoryId: categories[0]?.id ?? "__new__",
-    });
+    setForm({ ...EMPTY_FORM, categoryId: categories[0]?.id ?? "__new__" });
     setFormError("");
     setShowModal(true);
   }
@@ -81,6 +85,23 @@ export default function MenuPage() {
     setFormError("");
   }
 
+  function openEdit(item: MenuItem, categoryId: string) {
+    setEditItem(item);
+    setEditCategoryId(categoryId);
+    setEditForm({
+      name: item.name,
+      description: item.description,
+      price: String(item.price),
+      available: item.available,
+    });
+    setEditError("");
+  }
+
+  function closeEdit() {
+    setEditItem(null);
+    setEditError("");
+  }
+
   async function handleAddDish(e: React.FormEvent) {
     e.preventDefault();
     setSaving(true);
@@ -89,7 +110,6 @@ export default function MenuPage() {
     try {
       let categoryId = form.categoryId;
 
-      // Créer la catégorie si "Nouvelle catégorie" est sélectionnée
       if (categoryId === "__new__") {
         if (!form.newCategoryName.trim()) {
           setFormError("Veuillez saisir un nom de catégorie");
@@ -98,17 +118,13 @@ export default function MenuPage() {
         const catRes = await fetch("/api/menu", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            restaurant_id: restaurantId,
-            name: form.newCategoryName.trim(),
-          }),
+          body: JSON.stringify({ restaurant_id: restaurantId, name: form.newCategoryName.trim() }),
         });
         const catData = await catRes.json();
         if (!catRes.ok) { setFormError(catData.error); return; }
         categoryId = catData.id;
       }
 
-      // Créer le plat
       const res = await fetch("/api/menu/items", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -128,6 +144,33 @@ export default function MenuPage() {
     } finally {
       setSaving(false);
     }
+  }
+
+  async function handleEditDish(e: React.FormEvent) {
+    e.preventDefault();
+    if (!editItem) return;
+    setEditSaving(true);
+    setEditError("");
+
+    const res = await fetch(`/api/menu/items/${editItem.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        name: editForm.name.trim(),
+        description: editForm.description.trim(),
+        price: Number(editForm.price),
+        available: editForm.available,
+      }),
+    });
+
+    if (res.ok) {
+      await reloadMenu(restaurantId);
+      closeEdit();
+    } else {
+      const d = await res.json();
+      setEditError(d.error ?? "Erreur lors de la modification");
+    }
+    setEditSaving(false);
   }
 
   async function toggleAvailable(item: MenuItem) {
@@ -161,8 +204,7 @@ export default function MenuPage() {
 
   const totalItems = categories.reduce((s, c) => s + c.menu_items.length, 0);
   const availableItems = categories.reduce(
-    (s, c) => s + c.menu_items.filter((i) => i.available).length,
-    0
+    (s, c) => s + c.menu_items.filter((i) => i.available).length, 0
   );
 
   if (loading) {
@@ -181,11 +223,9 @@ export default function MenuPage() {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h1 className="text-xl md:text-2xl font-extrabold text-slate-900">Menu digital</h1>
-          <p className="text-slate-400 text-sm mt-0.5">
+          <p className="text-green-700 text-sm mt-0.5">
             {totalItems} plat{totalItems > 1 ? "s" : ""} ·{" "}
-            <span className="text-green-600">
-              {availableItems} disponible{availableItems > 1 ? "s" : ""}
-            </span>
+            <span className="text-green-600">{availableItems} disponible{availableItems > 1 ? "s" : ""}</span>
           </p>
         </div>
         <button
@@ -203,59 +243,38 @@ export default function MenuPage() {
       {categories.length === 0 ? (
         <div className="bg-white rounded-2xl border border-slate-100 p-12 text-center">
           <div className="text-4xl mb-3">📋</div>
-          <p className="text-slate-500 text-sm mb-4">
-            Votre menu est vide pour l&apos;instant.
-          </p>
-          <button
-            onClick={openModal}
-            className="inline-flex items-center gap-2 bg-orange-500 hover:bg-orange-600 text-white text-sm font-semibold px-5 py-2.5 rounded-xl transition-colors"
-          >
+          <p className="text-green-700 text-sm mb-4">Votre menu est vide pour l&apos;instant.</p>
+          <button onClick={openModal}
+            className="inline-flex items-center gap-2 bg-orange-500 hover:bg-orange-600 text-white text-sm font-semibold px-5 py-2.5 rounded-xl transition-colors">
             ➕ Ajouter votre premier plat
           </button>
         </div>
       ) : (
         categories.map((cat) => (
-          <div
-            key={cat.id}
-            className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden"
-          >
+          <div key={cat.id} className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
             <div className="px-6 py-4 border-b border-slate-50 flex items-center justify-between">
               <h2 className="font-bold text-slate-900">{cat.name}</h2>
-              <span className="text-xs text-slate-400">
-                {cat.menu_items.length} plat{cat.menu_items.length > 1 ? "s" : ""}
-              </span>
+              <span className="text-xs text-green-700">{cat.menu_items.length} plat{cat.menu_items.length > 1 ? "s" : ""}</span>
             </div>
 
             {cat.menu_items.length === 0 ? (
-              <div className="px-6 py-8 text-center text-slate-400 text-sm">
-                Aucun plat dans cette catégorie
-              </div>
+              <div className="px-6 py-8 text-center text-green-700 text-sm">Aucun plat dans cette catégorie</div>
             ) : (
               <div className="divide-y divide-slate-50">
                 {cat.menu_items.map((item) => (
-                  <div
-                    key={item.id}
-                    className="px-4 md:px-6 py-4 flex items-center justify-between gap-4 hover:bg-slate-50 transition-colors"
-                  >
+                  <div key={item.id}
+                    className="px-4 md:px-6 py-4 flex items-center justify-between gap-4 hover:bg-slate-50 transition-colors">
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center gap-2 flex-wrap">
-                        <span className="font-semibold text-slate-900 text-sm">
-                          {item.name}
-                        </span>
-                        <span
-                          className={`text-xs font-semibold px-2 py-0.5 rounded-full ${
-                            item.available
-                              ? "bg-green-50 text-green-700"
-                              : "bg-slate-100 text-slate-500"
-                          }`}
-                        >
+                        <span className="font-semibold text-slate-900 text-sm">{item.name}</span>
+                        <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${
+                          item.available ? "bg-green-50 text-green-700" : "bg-slate-100 text-green-700"
+                        }`}>
                           {item.available ? "Disponible" : "Indisponible"}
                         </span>
                       </div>
                       {item.description && (
-                        <p className="text-slate-400 text-xs mt-0.5 truncate max-w-sm">
-                          {item.description}
-                        </p>
+                        <p className="text-green-700 text-xs mt-0.5 truncate max-w-sm">{item.description}</p>
                       )}
                     </div>
 
@@ -263,6 +282,16 @@ export default function MenuPage() {
                       <span className="font-bold text-slate-900 text-sm whitespace-nowrap">
                         {item.price.toLocaleString("fr-FR")} F
                       </span>
+                      {/* Bouton éditer */}
+                      <button
+                        onClick={() => openEdit(item, cat.id)}
+                        className="text-xs font-semibold px-3 py-1.5 rounded-lg bg-blue-50 hover:bg-blue-100 text-blue-700 transition-colors"
+                        title="Modifier"
+                      >
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                        </svg>
+                      </button>
                       <button
                         onClick={() => toggleAvailable(item)}
                         disabled={toggling === item.id}
@@ -272,29 +301,15 @@ export default function MenuPage() {
                             : "bg-orange-50 hover:bg-orange-100 text-orange-700"
                         }`}
                       >
-                        {toggling === item.id
-                          ? "…"
-                          : item.available
-                          ? "Désactiver"
-                          : "Activer"}
+                        {toggling === item.id ? "…" : item.available ? "Désactiver" : "Activer"}
                       </button>
                       <button
                         onClick={() => deleteItem(item.id)}
-                        className="text-slate-300 hover:text-red-500 transition-colors p-1"
+                        className="text-green-700 hover:text-red-500 transition-colors p-1"
                         title="Supprimer"
                       >
-                        <svg
-                          className="w-4 h-4"
-                          fill="none"
-                          stroke="currentColor"
-                          viewBox="0 0 24 24"
-                        >
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth={2}
-                            d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
-                          />
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                         </svg>
                       </button>
                     </div>
@@ -310,52 +325,34 @@ export default function MenuPage() {
       {showModal && (
         <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
           <div className="bg-white rounded-2xl w-full max-w-md shadow-2xl max-h-[90vh] overflow-y-auto">
-            {/* En-tête */}
             <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100">
               <h2 className="font-bold text-slate-900">Nouveau plat</h2>
-              <button
-                onClick={closeModal}
-                className="p-1.5 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-lg transition-colors"
-              >
+              <button onClick={closeModal} className="p-1.5 text-green-700 hover:text-slate-700 hover:bg-slate-100 rounded-lg transition-colors">
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                 </svg>
               </button>
             </div>
-
-            {/* Formulaire */}
             <form onSubmit={handleAddDish} className="px-6 py-5 space-y-4">
               {formError && (
-                <div className="bg-red-50 border border-red-200 text-red-600 text-sm rounded-xl px-4 py-3">
-                  {formError}
-                </div>
+                <div className="bg-red-50 border border-red-200 text-red-600 text-sm rounded-xl px-4 py-3">{formError}</div>
               )}
-
-              {/* Catégorie */}
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1.5">
-                  Catégorie
-                </label>
+                <label className="block text-sm font-medium text-slate-700 mb-1.5">Catégorie</label>
                 <select
                   value={form.categoryId}
                   onChange={(e) => setForm({ ...form, categoryId: e.target.value })}
                   className="w-full border border-slate-200 rounded-xl px-4 py-3 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-orange-400 transition"
                 >
                   {categories.map((c) => (
-                    <option key={c.id} value={c.id}>
-                      {c.name}
-                    </option>
+                    <option key={c.id} value={c.id}>{c.name}</option>
                   ))}
                   <option value="__new__">➕ Nouvelle catégorie…</option>
                 </select>
               </div>
-
-              {/* Nom nouvelle catégorie */}
               {form.categoryId === "__new__" && (
                 <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1.5">
-                    Nom de la nouvelle catégorie
-                  </label>
+                  <label className="block text-sm font-medium text-slate-700 mb-1.5">Nom de la nouvelle catégorie</label>
                   <input
                     value={form.newCategoryName}
                     onChange={(e) => setForm({ ...form, newCategoryName: e.target.value })}
@@ -365,12 +362,8 @@ export default function MenuPage() {
                   />
                 </div>
               )}
-
-              {/* Nom du plat */}
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1.5">
-                  Nom du plat <span className="text-red-400">*</span>
-                </label>
+                <label className="block text-sm font-medium text-slate-700 mb-1.5">Nom du plat <span className="text-red-400">*</span></label>
                 <input
                   value={form.name}
                   onChange={(e) => setForm({ ...form, name: e.target.value })}
@@ -379,13 +372,8 @@ export default function MenuPage() {
                   placeholder="Ex : Thiéboudienne, Attiéké poisson…"
                 />
               </div>
-
-              {/* Description */}
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1.5">
-                  Description{" "}
-                  <span className="text-slate-400 font-normal">(optionnel)</span>
-                </label>
+                <label className="block text-sm font-medium text-slate-700 mb-1.5">Description <span className="text-green-700 font-normal">(optionnel)</span></label>
                 <textarea
                   value={form.description}
                   onChange={(e) => setForm({ ...form, description: e.target.value })}
@@ -394,16 +382,10 @@ export default function MenuPage() {
                   placeholder="Ingrédients, accompagnements…"
                 />
               </div>
-
-              {/* Prix */}
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1.5">
-                  Prix (FCFA) <span className="text-red-400">*</span>
-                </label>
+                <label className="block text-sm font-medium text-slate-700 mb-1.5">Prix (FCFA) <span className="text-red-400">*</span></label>
                 <input
-                  type="number"
-                  min="0"
-                  step="50"
+                  type="number" min="0" step="50"
                   value={form.price}
                   onChange={(e) => setForm({ ...form, price: e.target.value })}
                   required
@@ -411,42 +393,105 @@ export default function MenuPage() {
                   placeholder="Ex : 3500"
                 />
               </div>
-
-              {/* Disponibilité */}
               <div className="flex items-center justify-between py-2">
-                <span className="text-sm font-medium text-slate-700">
-                  Disponible immédiatement
-                </span>
+                <span className="text-sm font-medium text-slate-700">Disponible immédiatement</span>
                 <button
                   type="button"
                   onClick={() => setForm({ ...form, available: !form.available })}
-                  className={`relative w-12 h-6 rounded-full transition-colors ${
-                    form.available ? "bg-orange-500" : "bg-slate-200"
-                  }`}
+                  className={`relative w-12 h-6 rounded-full transition-colors ${form.available ? "bg-orange-500" : "bg-slate-200"}`}
                 >
-                  <span
-                    className={`absolute top-1 w-4 h-4 bg-white rounded-full shadow transition-transform ${
-                      form.available ? "translate-x-7" : "translate-x-1"
-                    }`}
-                  />
+                  <span className={`absolute top-1 w-4 h-4 bg-white rounded-full shadow transition-transform ${form.available ? "translate-x-7" : "translate-x-1"}`} />
                 </button>
               </div>
-
-              {/* Boutons */}
               <div className="flex gap-3 pt-2">
-                <button
-                  type="button"
-                  onClick={closeModal}
-                  className="flex-1 border border-slate-200 text-slate-700 font-semibold py-3 rounded-xl hover:bg-slate-50 transition-colors text-sm"
-                >
+                <button type="button" onClick={closeModal}
+                  className="flex-1 border border-slate-200 text-slate-700 font-semibold py-3 rounded-xl hover:bg-slate-50 transition-colors text-sm">
                   Annuler
                 </button>
-                <button
-                  type="submit"
-                  disabled={saving}
-                  className="flex-1 bg-orange-500 hover:bg-orange-600 disabled:opacity-60 text-white font-bold py-3 rounded-xl transition-colors text-sm"
-                >
+                <button type="submit" disabled={saving}
+                  className="flex-1 bg-orange-500 hover:bg-orange-600 disabled:opacity-60 text-white font-bold py-3 rounded-xl transition-colors text-sm">
                   {saving ? "Ajout en cours…" : "Ajouter le plat"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* ── Modal Modifier un plat ── */}
+      {editItem && (
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+          <div className="bg-white rounded-2xl w-full max-w-md shadow-2xl max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100">
+              <h2 className="font-bold text-slate-900">Modifier le plat</h2>
+              <button onClick={closeEdit} className="p-1.5 text-green-700 hover:text-slate-700 hover:bg-slate-100 rounded-lg transition-colors">
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+            <form onSubmit={handleEditDish} className="px-6 py-5 space-y-4">
+              {editError && (
+                <div className="bg-red-50 border border-red-200 text-red-600 text-sm rounded-xl px-4 py-3">{editError}</div>
+              )}
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1.5">Catégorie</label>
+                <select
+                  value={editCategoryId}
+                  onChange={(e) => setEditCategoryId(e.target.value)}
+                  className="w-full border border-slate-200 rounded-xl px-4 py-3 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-orange-400"
+                >
+                  {categories.map((c) => (
+                    <option key={c.id} value={c.id}>{c.name}</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1.5">Nom du plat <span className="text-red-400">*</span></label>
+                <input
+                  value={editForm.name}
+                  onChange={(e) => setEditForm({ ...editForm, name: e.target.value })}
+                  required
+                  className="w-full border border-slate-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1.5">Description <span className="text-green-700 font-normal">(optionnel)</span></label>
+                <textarea
+                  value={editForm.description}
+                  onChange={(e) => setEditForm({ ...editForm, description: e.target.value })}
+                  rows={2}
+                  className="w-full border border-slate-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400 resize-none"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1.5">Prix (FCFA) <span className="text-red-400">*</span></label>
+                <input
+                  type="number" min="0" step="50"
+                  value={editForm.price}
+                  onChange={(e) => setEditForm({ ...editForm, price: e.target.value })}
+                  required
+                  className="w-full border border-slate-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400"
+                />
+              </div>
+              <div className="flex items-center justify-between py-2">
+                <span className="text-sm font-medium text-slate-700">Disponible</span>
+                <button
+                  type="button"
+                  onClick={() => setEditForm({ ...editForm, available: !editForm.available })}
+                  className={`relative w-12 h-6 rounded-full transition-colors ${editForm.available ? "bg-orange-500" : "bg-slate-200"}`}
+                >
+                  <span className={`absolute top-1 w-4 h-4 bg-white rounded-full shadow transition-transform ${editForm.available ? "translate-x-7" : "translate-x-1"}`} />
+                </button>
+              </div>
+              <div className="flex gap-3 pt-2">
+                <button type="button" onClick={closeEdit}
+                  className="flex-1 border border-slate-200 text-slate-700 font-semibold py-3 rounded-xl hover:bg-slate-50 text-sm transition-colors">
+                  Annuler
+                </button>
+                <button type="submit" disabled={editSaving}
+                  className="flex-1 bg-orange-500 hover:bg-orange-600 disabled:opacity-60 text-white font-bold py-3 rounded-xl text-sm transition-colors">
+                  {editSaving ? "Sauvegarde…" : "Sauvegarder"}
                 </button>
               </div>
             </form>

@@ -2,29 +2,23 @@
 
 import { useState } from "react";
 import Sidebar from "./Sidebar";
+import type { Role } from "../../lib/auth";
 
 type Props = {
   children: React.ReactNode;
   restaurantName: string;
   restaurantSlug: string;
+  userName: string;
+  userRole: Role;
 };
 
 function getInitials(name: string): string {
-  return name
-    .split(" ")
-    .map((w) => w[0])
-    .join("")
-    .toUpperCase()
-    .slice(0, 2);
+  return name.split(" ").map((w) => w[0]).join("").toUpperCase().slice(0, 2);
 }
 
-export default function DashboardShell({
-  children,
-  restaurantName,
-  restaurantSlug,
-}: Props) {
+export default function DashboardShell({ children, restaurantName, restaurantSlug, userName, userRole }: Props) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const initials = getInitials(restaurantName);
+  const initials = getInitials(userName || restaurantName);
 
   return (
     <div className="min-h-screen bg-slate-50">
@@ -33,50 +27,43 @@ export default function DashboardShell({
         onClose={() => setSidebarOpen(false)}
         restaurantName={restaurantName}
         restaurantSlug={restaurantSlug}
+        userName={userName}
+        userRole={userRole}
         initials={initials}
       />
 
       {sidebarOpen && (
-        <div
-          className="fixed inset-0 bg-black/50 z-40 lg:hidden"
-          onClick={() => setSidebarOpen(false)}
-        />
+        <div className="fixed inset-0 bg-black/50 z-40 lg:hidden" onClick={() => setSidebarOpen(false)} />
       )}
 
       <div className="lg:ml-60">
         <header className="bg-white border-b border-slate-100 px-4 md:px-8 py-4 flex items-center justify-between sticky top-0 z-30">
           <div className="flex items-center gap-3">
-            <button
-              onClick={() => setSidebarOpen(true)}
+            <button onClick={() => setSidebarOpen(true)}
               className="flex lg:hidden items-center justify-center p-2 -ml-1 text-slate-700 hover:text-slate-900 hover:bg-slate-100 rounded-lg transition-colors"
-              aria-label="Ouvrir le menu"
-            >
+              aria-label="Ouvrir le menu">
               <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
               </svg>
             </button>
             <div>
-              <h1 className="text-slate-900 font-bold text-base md:text-lg leading-tight">
-                Tableau de bord
-              </h1>
-              <p className="text-slate-400 text-xs hidden sm:block">
-                {restaurantName}
-              </p>
+              <h1 className="text-slate-900 font-bold text-base md:text-lg leading-tight">Tableau de bord</h1>
+              <p className="text-green-700 text-xs hidden sm:block">{restaurantName}</p>
             </div>
           </div>
 
-          <div className="flex items-center gap-2 md:gap-3">
-            <button className="relative p-2 text-slate-400 hover:text-slate-600 transition-colors">
-              <span className="text-xl">🔔</span>
-              <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-orange-500 rounded-full" />
-            </button>
-            <a
-              href="/dashboard/parametres"
-              className="w-9 h-9 rounded-full bg-orange-500 flex items-center justify-center text-white text-sm font-bold hover:bg-orange-600 transition-colors"
-              title="Paramètres"
-            >
+          <div className="flex items-center gap-3">
+            <div className="hidden sm:flex items-center gap-2 text-right">
+              <div>
+                <div className="text-slate-800 text-xs font-semibold leading-tight">{userName}</div>
+                <div className="text-green-700 text-[11px]">
+                  {userRole === "owner" ? "Propriétaire" : userRole === "manager" ? "Gérant" : userRole === "waiter" ? "Serveur" : "Caissier"}
+                </div>
+              </div>
+            </div>
+            <div className="w-9 h-9 rounded-full bg-orange-500 flex items-center justify-center text-white text-sm font-bold">
               {initials}
-            </a>
+            </div>
           </div>
         </header>
 

@@ -131,8 +131,8 @@ export default async function DashboardPage() {
             <div className="text-2xl font-extrabold text-slate-900 leading-tight">
               {stat.value}
             </div>
-            <div className="text-xs text-slate-400 mt-1">
-              {stat.label} <span className="text-slate-300">· {stat.sub}</span>
+            <div className="text-xs text-green-700 mt-1">
+              {stat.label} <span className="text-green-700">· {stat.sub}</span>
             </div>
           </div>
         ))}
@@ -144,18 +144,18 @@ export default async function DashboardPage() {
         <div className="xl:col-span-2 bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
           <div className="flex items-center justify-between px-6 py-4 border-b border-slate-50">
             <h2 className="font-bold text-slate-900">Commandes récentes</h2>
-            <span className="text-xs text-slate-400">{orders.length} commande{orders.length > 1 ? "s" : ""}</span>
+            <span className="text-xs text-green-700">{orders.length} commande{orders.length > 1 ? "s" : ""}</span>
           </div>
 
           {orders.length === 0 ? (
-            <div className="px-6 py-12 text-center text-slate-400 text-sm">
+            <div className="px-6 py-12 text-center text-green-700 text-sm">
               Aucune commande pour l'instant
             </div>
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
-                  <tr className="text-left text-xs text-slate-400 uppercase tracking-wider border-b border-slate-50">
+                  <tr className="text-left text-xs text-green-700 uppercase tracking-wider border-b border-slate-50">
                     <th className="px-6 py-3 font-medium">Table</th>
                     <th className="px-6 py-3 font-medium hidden sm:table-cell">Articles</th>
                     <th className="px-6 py-3 font-medium">Total</th>
@@ -169,7 +169,7 @@ export default async function DashboardPage() {
                       <td className="px-6 py-4 font-semibold text-slate-900">
                         {order.table_number}
                       </td>
-                      <td className="px-6 py-4 text-slate-500 max-w-[200px] truncate hidden sm:table-cell">
+                      <td className="px-6 py-4 text-green-700 max-w-[200px] truncate hidden sm:table-cell">
                         {order.items}
                       </td>
                       <td className="px-6 py-4 font-semibold text-slate-900 whitespace-nowrap">
@@ -184,7 +184,7 @@ export default async function DashboardPage() {
                           {order.status}
                         </span>
                       </td>
-                      <td className="px-6 py-4 text-slate-400 text-xs whitespace-nowrap hidden md:table-cell">
+                      <td className="px-6 py-4 text-green-700 text-xs whitespace-nowrap hidden md:table-cell">
                         {new Date(order.created_at).toLocaleTimeString("fr-FR", {
                           hour: "2-digit",
                           minute: "2-digit",
@@ -202,11 +202,11 @@ export default async function DashboardPage() {
         <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
           <div className="flex items-center justify-between px-6 py-4 border-b border-slate-50">
             <h2 className="font-bold text-slate-900">Réservations à venir</h2>
-            <span className="text-xs text-slate-400">{reservations.length}</span>
+            <span className="text-xs text-green-700">{reservations.length}</span>
           </div>
 
           {reservations.length === 0 ? (
-            <div className="px-6 py-12 text-center text-slate-400 text-sm">
+            <div className="px-6 py-12 text-center text-green-700 text-sm">
               Aucune réservation à venir
             </div>
           ) : (
@@ -221,7 +221,7 @@ export default async function DashboardPage() {
                       <div className="font-semibold text-slate-900 text-sm truncate">
                         {r.customer_name}
                       </div>
-                      <div className="text-xs text-slate-400 mt-0.5">
+                      <div className="text-xs text-green-700 mt-0.5">
                         {r.guests} pers. · {new Date(r.date).toLocaleDateString("fr-FR")} {r.time}
                       </div>
                     </div>

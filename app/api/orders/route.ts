@@ -33,7 +33,7 @@ export async function POST(req: Request) {
 
   const { data, error } = await supabase
     .from("orders")
-    .insert({ restaurant_id, table_number, items, total })
+    .insert({ restaurant_id, table_number, items, total, status: "pending" })
     .select()
     .single();
 

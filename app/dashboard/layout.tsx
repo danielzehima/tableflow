@@ -1,28 +1,36 @@
 import { cookies } from "next/headers";
-import { supabase } from "../lib/supabase";
+import { redirect } from "next/navigation";
+import { supabase } from "../lib/supabase-server";
+import { getSession } from "../lib/auth-server";
 import DashboardShell from "./components/DashboardShell";
 
-export default async function DashboardLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
-  const cookieStore = await cookies();
-  const slug = cookieStore.get("restaurant_slug")?.value ?? "le-bonus";
+export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
+  const session = await getSession();
+  if (!session) redirect("/login");
 
+  // Fetch restaurant info
   const { data: restaurant } = await supabase
     .from("restaurants")
     .select("id, name, slug")
-    .eq("slug", slug)
+    .eq("id", session.restaurantId)
     .single();
 
-  const restaurantName = restaurant?.name ?? "Mon Restaurant";
-  const restaurantSlug = restaurant?.slug ?? slug;
+  if (!restaurant) redirect("/login");
+
+  // Keep slug cookie in sync (used by public APIs)
+  const cookieStore = await cookies();
+  if (cookieStore.get("restaurant_slug")?.value !== restaurant.slug) {
+    cookieStore.set("restaurant_slug", restaurant.slug, {
+      path: "/", maxAge: 31536000, sameSite: "lax",
+    });
+  }
 
   return (
     <DashboardShell
-      restaurantName={restaurantName}
-      restaurantSlug={restaurantSlug}
+      restaurantName={restaurant.name}
+      restaurantSlug={restaurant.slug}
+      userName={session.name}
+      userRole={session.role}
     >
       {children}
     </DashboardShell>
