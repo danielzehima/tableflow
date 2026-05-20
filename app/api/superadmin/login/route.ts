@@ -1,6 +1,25 @@
 import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
-import { supabase } from "../../../lib/supabase";
+import { createHmac, timingSafeEqual } from "crypto";
+
+const SECRET = process.env.AUTH_SECRET ?? "tableflow-change-in-production";
+
+function createAdminToken(email: string): string {
+  const payload = Buffer.from(
+    JSON.stringify({ email, role: "superadmin", exp: Date.now() + 24 * 60 * 60 * 1000 })
+  ).toString("base64url");
+  const sig = createHmac("sha256", SECRET).update(payload).digest("hex");
+  return `${payload}.${sig}`;
+}
+
+function safeEqual(a: string, b: string): boolean {
+  if (a.length !== b.length) return false;
+  try {
+    return timingSafeEqual(Buffer.from(a, "utf8"), Buffer.from(b, "utf8"));
+  } catch {
+    return false;
+  }
+}
 
 export async function POST(req: Request) {
   const { email, password } = await req.json();
@@ -9,18 +28,16 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Email et mot de passe requis" }, { status: 400 });
   }
 
-  if (email !== process.env.SUPERADMIN_EMAIL) {
+  const adminEmail = process.env.SUPERADMIN_EMAIL ?? "";
+  const adminPassword = process.env.SUPERADMIN_PASSWORD ?? "";
+
+  if (!safeEqual(email, adminEmail) || !safeEqual(password, adminPassword)) {
     return NextResponse.json({ error: "Accès refusé" }, { status: 403 });
   }
 
-  const { data, error } = await supabase.auth.signInWithPassword({ email, password });
-
-  if (error || !data.session) {
-    return NextResponse.json({ error: "Email ou mot de passe incorrect" }, { status: 401 });
-  }
-
+  const token = createAdminToken(email);
   const cookieStore = await cookies();
-  cookieStore.set("sb-admin-token", data.session.access_token, {
+  cookieStore.set("sb-admin-token", token, {
     httpOnly: true,
     secure: process.env.NODE_ENV === "production",
     sameSite: "lax",
