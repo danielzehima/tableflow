@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { createHmac, timingSafeEqual } from "crypto";
 
-const SECRET = process.env.AUTH_SECRET ?? "tableflow-change-in-production";
+const SECRET = (process.env.AUTH_SECRET ?? "tableflow-change-in-production").replace(/^﻿/, "");
 
 function createAdminToken(email: string): string {
   const payload = Buffer.from(
