@@ -3,8 +3,8 @@ import { redirect } from "next/navigation";
 import { createHmac, timingSafeEqual } from "crypto";
 import { NextResponse } from "next/server";
 
-const SECRET = process.env.AUTH_SECRET ?? "tableflow-change-in-production";
-const ADMIN_EMAIL = process.env.SUPERADMIN_EMAIL;
+const SECRET = (process.env.AUTH_SECRET ?? "tableflow-change-in-production").replace(/^﻿/, "");
+const ADMIN_EMAIL = (process.env.SUPERADMIN_EMAIL ?? "").replace(/^﻿/, "").trim();
 
 type AdminSession = { email: string; role: string; exp: number };
 
