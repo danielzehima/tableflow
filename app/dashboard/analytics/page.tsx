@@ -9,11 +9,12 @@ export default function AnalyticsPage() {
   const [data, setData] = useState<DailyData[]>([]);
   const [restaurantId, setRestaurantId] = useState("");
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
 
   useEffect(() => {
     async function init() {
       const res = await fetch("/api/auth/restaurant");
-      if (!res.ok) { setLoading(false); return; }
+      if (!res.ok) { setLoadError(true); setLoading(false); return; }
       const r = await res.json();
       setRestaurantId(r.id);
       await load(r.id, 30);
@@ -44,6 +45,20 @@ export default function AnalyticsPage() {
     (best, d) => (d.revenue > (best?.revenue ?? 0) ? d : best),
     null,
   );
+
+  if (loadError) {
+    return (
+      <div className="bg-white rounded-2xl border border-slate-100 p-12 text-center">
+        <div className="text-4xl mb-3">⚠️</div>
+        <p className="font-semibold text-slate-900 mb-1">Impossible de charger les analytics</p>
+        <p className="text-slate-500 text-sm mb-4">Session expirée ou erreur de connexion.</p>
+        <button onClick={() => window.location.reload()}
+          className="bg-orange-500 hover:bg-orange-600 text-white font-semibold px-5 py-2.5 rounded-xl text-sm transition-colors">
+          Réessayer
+        </button>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">

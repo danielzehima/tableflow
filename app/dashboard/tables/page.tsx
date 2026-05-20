@@ -60,15 +60,26 @@ export default function TablesPage() {
     if (!newName.trim()) return;
     setSaving(true);
     setError("");
+
+    let rid = restaurantId;
+    if (!rid) {
+      const r = await fetch("/api/auth/restaurant");
+      if (!r.ok) { setError("Session expirée, rechargez la page"); setSaving(false); return; }
+      const d = await r.json();
+      rid = d.id ?? "";
+      if (rid) { setRestaurantId(rid); setSlug(d.slug ?? ""); }
+    }
+    if (!rid) { setError("Impossible d'identifier le restaurant"); setSaving(false); return; }
+
     const res = await fetch("/api/tables", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ restaurant_id: restaurantId, name: newName.trim() }),
+      body: JSON.stringify({ restaurant_id: rid, name: newName.trim() }),
     });
     if (res.ok) {
       setNewName("");
       setAdding(false);
-      await loadTables(restaurantId);
+      await loadTables(rid);
     } else {
       const d = await res.json();
       setError(d.error ?? "Erreur");
