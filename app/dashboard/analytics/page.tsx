@@ -4,15 +4,6 @@ import { useEffect, useState } from "react";
 
 type DailyData = { date: string; revenue: number; orders: number };
 
-function readSlug(): string {
-  try {
-    const match = document.cookie.match(/(?:^|;\s*)restaurant_slug=([^;]+)/);
-    return match ? decodeURIComponent(match[1]) : "";
-  } catch {
-    return "";
-  }
-}
-
 export default function AnalyticsPage() {
   const [period, setPeriod] = useState<7 | 30>(30);
   const [data, setData] = useState<DailyData[]>([]);
@@ -21,8 +12,7 @@ export default function AnalyticsPage() {
 
   useEffect(() => {
     async function init() {
-      const slug = readSlug();
-      const res = await fetch(`/api/restaurants/${slug}`);
+      const res = await fetch("/api/auth/restaurant");
       if (!res.ok) { setLoading(false); return; }
       const r = await res.json();
       setRestaurantId(r.id);

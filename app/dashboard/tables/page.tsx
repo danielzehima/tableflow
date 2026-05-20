@@ -5,15 +5,6 @@ import { QRCodeCanvas } from "qrcode.react";
 
 type Table = { id: string; name: string };
 
-function readSlug(): string {
-  try {
-    const match = document.cookie.match(/(?:^|;\s*)restaurant_slug=([^;]+)/);
-    return match ? decodeURIComponent(match[1]) : "";
-  } catch {
-    return "";
-  }
-}
-
 const STORAGE_KEY = "tableflow_base_url";
 
 export default function TablesPage() {
@@ -41,11 +32,10 @@ export default function TablesPage() {
     setTempUrl(saved || origin);
 
     async function init() {
-      const s = readSlug();
-      setSlug(s);
-      const res = await fetch(`/api/restaurants/${s}`);
+      const res = await fetch("/api/auth/restaurant");
       if (!res.ok) { setLoading(false); return; }
       const data = await res.json();
+      setSlug(data.slug ?? "");
       setRestaurantId(data.id);
       await loadTables(data.id);
       setLoading(false);

@@ -14,15 +14,6 @@ type Reservation = {
   created_at: string;
 };
 
-function readSlug(): string {
-  try {
-    const match = document.cookie.match(/(?:^|;\s*)restaurant_slug=([^;]+)/);
-    return match ? decodeURIComponent(match[1]) : "le-bonus";
-  } catch {
-    return "le-bonus";
-  }
-}
-
 const statusStyle: Record<string, string> = {
   Confirmée: "bg-green-50 text-green-700",
   "En attente": "bg-amber-50 text-amber-700",
@@ -57,8 +48,7 @@ export default function ReservationsPage() {
 
   useEffect(() => {
     async function init() {
-      const slug = readSlug();
-      const res = await fetch(`/api/restaurants/${slug}`);
+      const res = await fetch("/api/auth/restaurant");
       if (!res.ok) { setLoading(false); return; }
       const restaurant = await res.json();
       setRestaurantId(restaurant.id);
