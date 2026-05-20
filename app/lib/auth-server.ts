@@ -38,7 +38,7 @@ export async function requireSession(): Promise<SessionPayload> {
     const { redirect } = await import("next/navigation");
     redirect("/login");
   }
-  return session;
+  return session as SessionPayload;
 }
 
 export async function getSessionUser() {
