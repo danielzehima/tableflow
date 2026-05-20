@@ -28,8 +28,8 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Email et mot de passe requis" }, { status: 400 });
   }
 
-  const adminEmail = process.env.SUPERADMIN_EMAIL ?? "";
-  const adminPassword = process.env.SUPERADMIN_PASSWORD ?? "";
+  const adminEmail = (process.env.SUPERADMIN_EMAIL ?? "").replace(/^﻿/, "").trim();
+  const adminPassword = (process.env.SUPERADMIN_PASSWORD ?? "").replace(/^﻿/, "").trim();
 
   if (!safeEqual(email, adminEmail) || !safeEqual(password, adminPassword)) {
     return NextResponse.json({ error: "Accès refusé" }, { status: 403 });
