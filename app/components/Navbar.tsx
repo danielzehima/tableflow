@@ -27,7 +27,7 @@ export default function Navbar() {
         <div className="flex items-center gap-3">
           <a
             href="/dashboard"
-            className="text-slate-600 hover:text-slate-900 text-sm font-medium hidden md:block"
+            className="text-slate-600 hover:text-slate-900 text-sm font-medium"
           >
             Connexion
           </a>
