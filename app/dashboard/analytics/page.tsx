@@ -7,33 +7,25 @@ type DailyData = { date: string; revenue: number; orders: number };
 export default function AnalyticsPage() {
   const [period, setPeriod] = useState<7 | 30>(30);
   const [data, setData] = useState<DailyData[]>([]);
-  const [restaurantId, setRestaurantId] = useState("");
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState(false);
 
+  async function load(days: number) {
+    const r = await fetch(`/api/analytics/me?days=${days}`);
+    if (r.ok) setData(await r.json());
+    else setLoadError(true);
+  }
+
   useEffect(() => {
-    async function init() {
-      const res = await fetch("/api/auth/restaurant");
-      if (!res.ok) { setLoadError(true); setLoading(false); return; }
-      const r = await res.json();
-      setRestaurantId(r.id);
-      await load(r.id, 30);
-      setLoading(false);
-    }
-    init();
+    load(30).finally(() => setLoading(false));
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  async function load(rid: string, days: number) {
-    const r = await fetch(`/api/analytics?restaurant_id=${rid}&days=${days}`);
-    if (r.ok) setData(await r.json());
-  }
-
   async function changePeriod(days: 7 | 30) {
-    if (days === period || !restaurantId) return;
+    if (days === period) return;
     setPeriod(days);
     setLoading(true);
-    await load(restaurantId, days);
+    await load(days);
     setLoading(false);
   }
 
