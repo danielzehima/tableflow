@@ -137,30 +137,33 @@ function MenuTab({
                     </div>
                   )}
 
-                  <div className="p-4">
-                    <div className="flex items-start justify-between gap-3">
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <span className="font-bold text-slate-900 text-sm leading-snug">
-                            {item.name}
-                          </span>
-                          {!item.available && (
-                            <span className="text-[10px] bg-slate-100 text-slate-400 px-1.5 py-0.5 rounded-full font-medium">
-                              Indisponible
-                            </span>
-                          )}
-                        </div>
-                        {item.description && (
-                          <p className="text-slate-400 text-xs mt-1 leading-relaxed line-clamp-2">
-                            {item.description}
-                          </p>
-                        )}
-                        <div className="mt-2.5 flex items-baseline gap-1">
-                          <span className="text-orange-600 font-extrabold text-sm">
-                            {item.price.toLocaleString("fr-FR")}
-                          </span>
-                          <span className="text-orange-400 text-xs font-medium">FCFA</span>
-                        </div>
+                  <div className="p-4 flex flex-col gap-1.5">
+                    {/* Nom + badge indisponible */}
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="font-bold text-slate-900 text-sm leading-snug">
+                        {item.name}
+                      </span>
+                      {!item.available && (
+                        <span className="text-[10px] bg-slate-100 text-slate-400 px-1.5 py-0.5 rounded-full font-medium">
+                          Indisponible
+                        </span>
+                      )}
+                    </div>
+
+                    {/* Description */}
+                    {item.description && (
+                      <p className="text-slate-400 text-xs leading-relaxed line-clamp-2">
+                        {item.description}
+                      </p>
+                    )}
+
+                    {/* Prix + bouton ajouter sur la même ligne */}
+                    <div className="flex items-center justify-between mt-1">
+                      <div className="flex items-baseline gap-1">
+                        <span className="text-orange-600 font-extrabold text-base">
+                          {item.price.toLocaleString("fr-FR")}
+                        </span>
+                        <span className="text-orange-400 text-xs font-medium">FCFA</span>
                       </div>
                       {item.available && (
                         <button
