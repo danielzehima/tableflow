@@ -32,6 +32,7 @@ export default function Sidebar({ isOpen = false, onClose, restaurantName, resta
     { href: "/dashboard/personnalisation", icon: PaletteIcon, label: "Personnalisation", show: canManageMenu(userRole) },
     { href: "/dashboard/avis", icon: StarIcon, label: "Avis clients", show: canManageMenu(userRole) },
     { href: "/dashboard/cuisine", icon: ChefIcon, label: "Vue Cuisine", always: true },
+    { href: "/dashboard/salle", icon: TableIcon, label: "Plan de salle", always: true },
     { href: "/dashboard/menu", icon: MenuIcon, label: "Menu digital", show: canManageMenu(userRole) },
     { href: "/dashboard/tables", icon: QrIcon, label: "Tables & QR", show: canManageMenu(userRole) },
     { href: "/dashboard/equipe", icon: TeamIcon, label: "Équipe", show: canManageTeam(userRole) },
@@ -199,6 +200,13 @@ function QrIcon({ className }: { className?: string }) {
   return (
     <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm12 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z" />
+    </svg>
+  );
+}
+function TableIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h18M3 14h18M10 4v16M14 4v16M4 4h16a1 1 0 011 1v14a1 1 0 01-1 1H4a1 1 0 01-1-1V5a1 1 0 011-1z" />
     </svg>
   );
 }
