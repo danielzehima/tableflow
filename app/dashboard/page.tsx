@@ -1,10 +1,16 @@
-import { cookies } from "next/headers";
-import { supabase } from "../lib/supabase";
+import { supabase } from "../lib/supabase-server";
+import { getSession } from "../lib/auth-server";
 
 const orderStatusStyle: Record<string, string> = {
+  pending:   "bg-orange-50 text-orange-600",
+  preparing: "bg-blue-50 text-blue-600",
+  ready:     "bg-emerald-50 text-emerald-700",
+  served:    "bg-amber-50 text-amber-600",
+  paid:      "bg-green-50 text-green-700",
+  cancelled: "bg-red-50 text-red-600",
   "En cours": "bg-blue-50 text-blue-600",
-  Servi: "bg-amber-50 text-amber-600",
-  Payé: "bg-green-50 text-green-700",
+  Servi:     "bg-amber-50 text-amber-600",
+  Payé:      "bg-green-50 text-green-700",
 };
 
 const reservationStatusStyle: Record<string, string> = {
@@ -44,8 +50,8 @@ async function getDashboardData(restaurantId: string) {
     o.created_at?.startsWith(today)
   );
   const revenue = todayOrders
-    .filter((o) => o.status === "Payé")
-    .reduce((sum: number, o: { total: number }) => sum + o.total, 0);
+    .filter((o) => o.status === "paid" || o.status === "Payé")
+    .reduce((sum: number, o: { total: number | string }) => sum + Number(o.total), 0);
 
   const stats = [
     {
@@ -86,13 +92,12 @@ async function getDashboardData(restaurantId: string) {
 }
 
 export default async function DashboardPage() {
-  const cookieStore = await cookies();
-  const slug = cookieStore.get("restaurant_slug")?.value ?? "le-bonus";
+  const session = await getSession();
 
   const { data: restaurant } = await supabase
     .from("restaurants")
     .select("id, name, slug")
-    .eq("slug", slug)
+    .eq("id", session?.restaurantId ?? "")
     .single();
 
   const restaurantId = restaurant?.id ?? "";
@@ -181,7 +186,7 @@ export default async function DashboardPage() {
                             orderStatusStyle[order.status] ?? "bg-slate-100 text-slate-600"
                           }`}
                         >
-                          {order.status}
+                          {{ pending: "En attente", preparing: "En préparation", ready: "Prêt", served: "Servi", paid: "Payé", cancelled: "Annulé" }[order.status as string] ?? order.status}
                         </span>
                       </td>
                       <td className="px-6 py-4 text-green-700 text-xs whitespace-nowrap hidden md:table-cell">
