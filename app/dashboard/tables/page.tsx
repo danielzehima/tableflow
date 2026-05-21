@@ -61,15 +61,14 @@ export default function TablesPage() {
     setSaving(true);
     setError("");
 
-    let rid = restaurantId;
-    if (!rid) {
-      const r = await fetch("/api/auth/restaurant");
-      if (!r.ok) { setError("Session expirée, rechargez la page"); setSaving(false); return; }
-      const d = await r.json();
-      rid = d.id ?? "";
-      if (rid) { setRestaurantId(rid); setSlug(d.slug ?? ""); }
-    }
+    // Toujours récupérer un restaurantId frais depuis le serveur
+    const authRes = await fetch("/api/auth/restaurant");
+    if (!authRes.ok) { setError("Session expirée, rechargez la page"); setSaving(false); return; }
+    const authData = await authRes.json();
+    const rid = authData.id ?? "";
     if (!rid) { setError("Impossible d'identifier le restaurant"); setSaving(false); return; }
+    setRestaurantId(rid);
+    setSlug(authData.slug ?? "");
 
     const res = await fetch("/api/tables", {
       method: "POST",
