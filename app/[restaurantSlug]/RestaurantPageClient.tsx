@@ -436,7 +436,7 @@ function ReservationTab({ name, restaurantId }: { name: string; restaurantId: st
       )}
 
       <form onSubmit={handleSubmit} className="space-y-4">
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div>
             <label className="block text-xs font-semibold text-slate-600 mb-1.5 uppercase tracking-wide">Nom</label>
             <input required name="customer_name" type="text" value={form.customer_name} onChange={handleChange}
@@ -451,7 +451,7 @@ function ReservationTab({ name, restaurantId }: { name: string; restaurantId: st
           </div>
         </div>
 
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div>
             <label className="block text-xs font-semibold text-slate-600 mb-1.5 uppercase tracking-wide">Date</label>
             <input required name="date" type="date" value={form.date} onChange={handleChange}

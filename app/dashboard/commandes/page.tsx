@@ -219,7 +219,7 @@ export default function CommandesPage() {
   if (loading) {
     return (
       <div className="space-y-4 animate-pulse">
-        <div className="grid grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           {[1, 2, 3].map((n) => <div key={n} className="bg-white rounded-2xl h-24 border border-slate-100" />)}
         </div>
         <div className="bg-white rounded-2xl h-64 border border-slate-100" />
@@ -230,19 +230,19 @@ export default function CommandesPage() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
           <h1 className="text-xl md:text-2xl font-extrabold text-slate-900">Commandes</h1>
           <p className="text-green-700 text-sm mt-0.5">{orders.length} commande{orders.length > 1 ? "s" : ""} au total</p>
         </div>
-        <div className="flex items-center gap-3">
-          <div className="flex items-center gap-1.5 text-xs">
+        <div className="flex items-center gap-2">
+          <div className="hidden sm:flex items-center gap-1.5 text-xs mr-1">
             <div className={`w-2 h-2 rounded-full ${connected ? "bg-emerald-400 animate-pulse" : "bg-slate-400"}`} />
             <span className="text-green-700">{connected ? "En direct" : "Hors ligne"}</span>
           </div>
           <button
             onClick={exportCSV}
-            className="inline-flex items-center gap-2 bg-white border border-slate-200 hover:border-orange-300 text-slate-700 hover:text-orange-600 text-sm font-semibold px-4 py-2 rounded-xl transition-colors"
+            className="hidden sm:inline-flex items-center gap-2 bg-white border border-slate-200 hover:border-orange-300 text-slate-700 hover:text-orange-600 text-sm font-semibold px-4 py-2 rounded-xl transition-colors"
           >
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
