@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname } from "next/navigation";
 import { ROLE_LABELS, ROLE_COLORS, canManageTeam, canManageMenu, canViewStats } from "../../lib/auth";
 import type { Role } from "../../lib/auth";
 
@@ -17,11 +17,10 @@ type SidebarProps = {
 
 export default function Sidebar({ isOpen = false, onClose, restaurantName, restaurantSlug, userName, userRole, initials }: SidebarProps) {
   const pathname = usePathname();
-  const router = useRouter();
 
   async function logout() {
     await fetch("/api/auth/logout", { method: "POST" });
-    router.push("/login");
+    window.location.href = "/login";
   }
 
   const navItems = [
