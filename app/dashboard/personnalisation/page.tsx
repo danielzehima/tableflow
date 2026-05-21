@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 
+
 const PRESET_COLORS = [
   { label: "Orange", value: "#f97316" },
   { label: "Rouge", value: "#ef4444" },
