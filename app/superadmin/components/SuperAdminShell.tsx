@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import SuperAdminSidebar from "./Sidebar";
 
 export default function SuperAdminShell({ children }: { children: React.ReactNode }) {
@@ -25,11 +26,11 @@ export default function SuperAdminShell({ children }: { children: React.ReactNod
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
             </svg>
           </button>
-          <div className="flex items-center gap-2">
+          <Link href="/" className="flex items-center gap-2">
             <div className="w-6 h-6 bg-orange-500 rounded flex items-center justify-center text-white font-extrabold text-xs">T</div>
             <span className="text-white font-bold text-sm">TableFlow</span>
             <span className="text-orange-400 text-[10px] font-bold uppercase tracking-wider">Super Admin</span>
-          </div>
+          </Link>
         </header>
 
         <main className="flex-1 p-4 md:p-6 lg:p-8 overflow-y-auto">

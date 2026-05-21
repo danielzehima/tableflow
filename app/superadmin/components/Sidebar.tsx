@@ -34,7 +34,7 @@ export default function SuperAdminSidebar({ isOpen = false, onClose }: Props) {
       {/* Logo */}
       <div className="px-5 py-6 border-b border-slate-800">
         <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2.5">
+          <Link href="/" className="flex items-center gap-2.5">
             <div className="w-8 h-8 bg-orange-500 rounded-lg flex items-center justify-center text-white font-extrabold text-sm">
               T
             </div>
@@ -42,7 +42,7 @@ export default function SuperAdminSidebar({ isOpen = false, onClose }: Props) {
               <div className="text-white font-extrabold text-sm leading-tight">TableFlow</div>
               <div className="text-orange-400 text-[10px] font-bold uppercase tracking-wider">Super Admin</div>
             </div>
-          </div>
+          </Link>
           <button onClick={onClose} className="lg:hidden p-1.5 text-slate-400 hover:text-white rounded-lg">
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
