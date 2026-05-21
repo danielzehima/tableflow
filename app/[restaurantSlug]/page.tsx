@@ -1,5 +1,5 @@
 import { notFound } from "next/navigation";
-import { supabase } from "../lib/supabase";
+import { supabase } from "../lib/supabase-server";
 import RestaurantPageClient from "./RestaurantPageClient";
 
 type Props = {
