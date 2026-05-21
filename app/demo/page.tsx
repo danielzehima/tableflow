@@ -1,4 +1,4 @@
-import { notFound } from "next/navigation";
+import { redirect } from "next/navigation";
 import { supabase } from "../lib/supabase-server";
 import RestaurantPageClient from "../[restaurantSlug]/RestaurantPageClient";
 
@@ -7,9 +7,9 @@ export default async function DemoPage() {
     .from("restaurants")
     .select("*")
     .eq("is_demo", true)
-    .single();
+    .maybeSingle();
 
-  if (!restaurant) notFound();
+  if (!restaurant) redirect("/inscription?demo=unavailable");
 
   const { data: categories } = await supabase
     .from("menu_categories")
@@ -46,6 +46,7 @@ export default async function DemoPage() {
     primaryColor: restaurant.primary_color || "#f97316",
     welcomeMessage: restaurant.welcome_message || "",
     isDemo: true,
+    images: [],
     menu,
   };
 
