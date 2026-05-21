@@ -225,6 +225,7 @@ Le restaurateur peut exporter le journal de ses commandes en PDF ou Excel pour s
 ### Objectif
 Après l'inscription, guider le restaurateur en 3 étapes pour configurer son compte avant d'accéder au dashboard.
 
+
 ### Fichiers à créer
 - `app/dashboard/onboarding/page.tsx` — wizard d'onboarding
 - `app/api/onboarding/complete/route.ts` — marque l'onboarding comme terminé
@@ -290,3 +291,78 @@ Un restaurant fictif pré-rempli accessible sans compte sur `/demo` pour que les
 6. **Feature 4** (Personnalisation) — Différenciation
 7. **Feature 5** (Avis clients) — Engagement
 8. **Feature 6** (Export PDF/Excel) — Confort comptable
+
+---
+
+## ROADMAP V2 — Prochaines fonctionnalités proposées
+
+| # | Feature | Statut | Priorité |
+|---|---------|--------|----------|
+| 9  | Paiement mobile money (CinetPay, Orange Money, Wave) | A faire | Haute |
+| 10 | PWA — dashboard installable sur téléphone | A faire | Haute |
+| 11 | Notifications commandes par WhatsApp | A faire | Moyenne |
+| 12 | Plan de salle visuel (tables libres / occupées) | A faire | Moyenne |
+
+---
+
+## FEATURE 9 — Paiement mobile money intégré
+
+### Objectif
+Le client peut payer sa commande directement depuis la page menu via CinetPay, Orange Money ou Wave, avant ou après avoir passé la commande.
+
+### Impact
+Débloquer le paiement sans espèces — fonctionnalité clé pour les restaurants ivoiriens et africains.
+
+### Pistes d'implémentation
+- Intégration API CinetPay (agrégateur qui couvre Orange Money, MTN, Wave, Moov)
+- Bouton "Payer" sur la page publique après confirmation de commande
+- Webhook CinetPay pour confirmer le paiement côté serveur
+- Statut de paiement affiché dans le dashboard (`paid` / `pending` / `failed`)
+
+---
+
+## FEATURE 10 — PWA (Progressive Web App)
+
+### Objectif
+Transformer le dashboard en application installable sur téléphone (Android/iOS). Le restaurateur ajoute TableFlow à son écran d'accueil comme une vraie app.
+
+### Impact
+Meilleure rétention, accès rapide sans navigateur, expérience mobile native.
+
+### Pistes d'implémentation
+- Ajouter `manifest.json` avec icônes et thème orange
+- Service Worker pour mise en cache des pages du dashboard
+- Métadonnées `apple-mobile-web-app-*` pour iOS
+- Banner "Installer l'app" dans le header du dashboard
+
+---
+
+## FEATURE 11 — Notifications commandes par WhatsApp
+
+### Objectif
+Quand un client passe une commande, le restaurant reçoit automatiquement un message WhatsApp avec les détails (table, plats, total).
+
+### Impact
+Plus fiable que les notifications SSE quand le dashboard est fermé. Le restaurateur est toujours alerté.
+
+### Pistes d'implémentation
+- API WhatsApp Business (Meta) ou Twilio WhatsApp
+- Le restaurateur renseigne son numéro WhatsApp dans les paramètres
+- Message envoyé après chaque INSERT dans `orders`
+- Template de message : "Nouvelle commande — Table X — Total : XXXX FCFA"
+
+---
+
+## FEATURE 12 — Plan de salle visuel
+
+### Objectif
+Une vue graphique du restaurant avec toutes les tables représentées. Le restaurateur voit en un coup d'œil quelles tables sont libres, en commande ou demandent l'addition.
+
+### Impact
+Remplacement de la vue liste des commandes par une vue spatiale plus intuitive.
+
+### Pistes d'implémentation
+- Page `/dashboard/salle` avec grille de tables configurables
+- Couleurs : vert (libre), orange (commande en cours), rouge (demande l'addition)
+- Clic sur une table → détail de la commande en cours
+- Mise à jour temps réel via SSE (même endpoint que Feature 1)
