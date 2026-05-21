@@ -1,13 +1,16 @@
 import { NextResponse } from "next/server";
 import { supabase } from "../../lib/supabase-server";
+import { getSession } from "../../lib/auth-server";
 
 export async function GET(req: Request) {
   const { searchParams } = new URL(req.url);
-  const restaurant_id = searchParams.get("restaurant_id");
+  let restaurant_id = searchParams.get("restaurant_id");
   const days = Math.min(parseInt(searchParams.get("days") ?? "30", 10), 90);
 
   if (!restaurant_id) {
-    return NextResponse.json({ error: "restaurant_id requis" }, { status: 400 });
+    const session = await getSession();
+    if (!session) return NextResponse.json({ error: "Non autorisé" }, { status: 401 });
+    restaurant_id = session.restaurantId;
   }
 
   const since = new Date();

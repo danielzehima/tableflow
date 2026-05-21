@@ -11,7 +11,7 @@ export default function AnalyticsPage() {
   const [loadError, setLoadError] = useState(false);
 
   async function load(days: number) {
-    const r = await fetch(`/api/analytics/me?days=${days}`);
+    const r = await fetch(`/api/analytics?days=${days}`);
     if (r.ok) setData(await r.json());
     else setLoadError(true);
   }
