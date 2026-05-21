@@ -49,6 +49,12 @@ export default async function RestaurantPage({ params, searchParams }: Props) {
       })),
   }));
 
+  const { data: galleryData } = await supabase
+    .from("restaurant_images")
+    .select("id, url")
+    .eq("restaurant_id", restaurant.id)
+    .order("position");
+
   const restaurantData = {
     id: restaurant.id,
     name: restaurant.name,
@@ -63,6 +69,7 @@ export default async function RestaurantPage({ params, searchParams }: Props) {
     coverImage: restaurant.cover_image || "/hero-restaurant.png",
     primaryColor: restaurant.primary_color || "#f97316",
     welcomeMessage: restaurant.welcome_message || "",
+    images: (galleryData ?? []).map((i: { id: string; url: string }) => ({ id: i.id, url: i.url })),
     menu,
   };
 

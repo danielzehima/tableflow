@@ -60,6 +60,8 @@ type MenuCategory = {
   items: MenuItem[];
 };
 
+type GalleryImage = { id: string; url: string };
+
 type Restaurant = {
   id: string;
   name: string;
@@ -76,6 +78,7 @@ type Restaurant = {
   primaryColor?: string;
   welcomeMessage?: string;
   isDemo?: boolean;
+  images?: GalleryImage[];
 };
 
 type Tab = "menu" | "reservation" | "info";
@@ -702,6 +705,61 @@ function PrimaryBtn({
   );
 }
 
+// ── Section galerie photos ────────────────────────────────────────────────────
+
+function GallerySection({ images }: { images: GalleryImage[] }) {
+  const [lightbox, setLightbox] = useState<string | null>(null);
+
+  if (!images || images.length === 0) return null;
+
+  return (
+    <>
+      <section className="max-w-5xl mx-auto px-4 py-8 border-t border-slate-100">
+        <h2 className="text-lg font-extrabold text-slate-900 mb-4">Notre espace</h2>
+        <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+          {images.map((img) => (
+            <button
+              key={img.id}
+              type="button"
+              onClick={() => setLightbox(img.url)}
+              className="aspect-square overflow-hidden rounded-2xl cursor-pointer group focus:outline-none"
+            >
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={img.url}
+                alt="Espace du restaurant"
+                className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
+              />
+            </button>
+          ))}
+        </div>
+      </section>
+
+      {lightbox && (
+        <div
+          className="fixed inset-0 z-[100] bg-black/90 flex items-center justify-center p-4"
+          onClick={() => setLightbox(null)}
+        >
+          <button
+            type="button"
+            onClick={() => setLightbox(null)}
+            className="absolute top-4 right-4 w-10 h-10 bg-white/10 hover:bg-white/25 rounded-full flex items-center justify-center text-white text-xl font-bold transition-colors"
+          >
+            ✕
+          </button>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={lightbox}
+            alt="Photo restaurant"
+            className="max-w-full max-h-[90vh] object-contain rounded-xl"
+            onClick={(e) => e.stopPropagation()}
+          />
+        </div>
+      )}
+    </>
+  );
+}
+
 // ── Section avis ─────────────────────────────────────────────────────────────
 
 function ReviewsSection({ reviews }: { reviews: Review[] }) {
@@ -921,6 +979,9 @@ export default function RestaurantPageClient({
         )}
         {activeTab === "info" && <InfoTab restaurant={restaurant} />}
       </main>
+
+      {/* ── Galerie photos ── */}
+      <GallerySection images={restaurant.images ?? []} />
 
       {/* ── Avis clients ── */}
       <ReviewsSection reviews={reviews} />
