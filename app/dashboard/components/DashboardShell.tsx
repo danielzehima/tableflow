@@ -3,7 +3,6 @@
 import { useState } from "react";
 import Sidebar from "./Sidebar";
 import OrderNotificationBell from "./OrderNotificationBell";
-import PWAInstallBanner from "./PWAInstallBanner";
 import type { Role } from "../../lib/auth";
 
 type Props = {
@@ -73,8 +72,6 @@ export default function DashboardShell({ children, restaurantId, restaurantName,
 
         <main className="p-4 md:p-8">{children}</main>
       </div>
-
-      <PWAInstallBanner />
     </div>
   );
 }

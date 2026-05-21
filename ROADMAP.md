@@ -299,7 +299,7 @@ Un restaurant fictif pré-rempli accessible sans compte sur `/demo` pour que les
 | # | Feature | Statut | Priorité |
 |---|---------|--------|----------|
 | 9  | Paiement mobile money (CinetPay, Orange Money, Wave) | A faire | Haute |
-| 10 | PWA — dashboard installable sur téléphone | A faire | Haute |
+| 10 | PWA — dashboard installable sur téléphone | ❌ Annulé | Haute |
 | 11 | Notifications commandes par WhatsApp | A faire | Moyenne |
 | 12 | Plan de salle visuel (tables libres / occupées) | ✅ Terminé | Moyenne |
 
