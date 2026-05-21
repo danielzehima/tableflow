@@ -24,6 +24,7 @@ const PLAN_BADGE: Record<string, string> = {
 export default function TarifsPage() {
   const [plans, setPlans] = useState<PlanSetting[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState("");
   const [editing, setEditing] = useState<PlanSetting | null>(null);
   const [featuresText, setFeaturesText] = useState("");
   const [saving, setSaving] = useState(false);
@@ -31,8 +32,14 @@ export default function TarifsPage() {
   const [successMsg, setSuccessMsg] = useState("");
 
   async function load() {
+    setLoadError("");
     const res = await fetch("/api/superadmin/plans");
-    if (res.ok) setPlans(await res.json());
+    if (res.ok) {
+      setPlans(await res.json());
+    } else {
+      const d = await res.json().catch(() => ({}));
+      setLoadError(d.error ?? "Impossible de charger les plans.");
+    }
     setLoading(false);
   }
 
@@ -83,6 +90,13 @@ export default function TarifsPage() {
           Gérez les offres affichées sur la page publique de TableFlow.
         </p>
       </div>
+
+      {loadError && (
+        <div className="bg-red-500/15 border border-red-500/30 text-red-400 text-sm rounded-xl px-4 py-3 flex items-center justify-between gap-4">
+          <span>⚠️ Erreur : {loadError}</span>
+          <button onClick={load} className="underline text-xs shrink-0">Réessayer</button>
+        </div>
+      )}
 
       {successMsg && (
         <div className="bg-emerald-500/15 border border-emerald-500/30 text-emerald-400 text-sm rounded-xl px-4 py-3">

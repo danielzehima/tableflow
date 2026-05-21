@@ -7,7 +7,7 @@ export async function PATCH(
 ) {
   const { slug } = await params;
   const body = await req.json();
-  const { name, address, phone, email, hours, cuisine, description, tagline, cover_image } = body;
+  const { name, address, phone, email, hours, cuisine, description, tagline, cover_image, primary_color, welcome_message } = body;
 
   const update: Record<string, string> = {};
   if (name !== undefined) update.name = name;
@@ -19,6 +19,8 @@ export async function PATCH(
   if (description !== undefined) update.description = description;
   if (tagline !== undefined) update.tagline = tagline;
   if (cover_image !== undefined) update.cover_image = cover_image;
+  if (primary_color !== undefined) update.primary_color = primary_color;
+  if (welcome_message !== undefined) update.welcome_message = welcome_message;
 
   const { data, error } = await supabase
     .from("restaurants")

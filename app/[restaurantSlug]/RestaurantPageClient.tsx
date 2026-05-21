@@ -1,7 +1,49 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useContext, createContext, useEffect } from "react";
 import Image from "next/image";
+
+const PrimaryColorCtx = createContext("#f97316");
+
+type Review = {
+  id: string;
+  rating: number;
+  comment: string | null;
+  customer_name: string | null;
+  created_at: string;
+};
+
+function StarDisplay({ rating }: { rating: number }) {
+  return (
+    <div className="flex gap-0.5">
+      {[1, 2, 3, 4, 5].map((s) => (
+        <span key={s} className={`text-base ${s <= rating ? "text-yellow-400" : "text-slate-200"}`}>★</span>
+      ))}
+    </div>
+  );
+}
+
+function StarPicker({ value, onChange }: { value: number; onChange: (v: number) => void }) {
+  const [hovered, setHovered] = useState(0);
+  return (
+    <div className="flex gap-1">
+      {[1, 2, 3, 4, 5].map((s) => (
+        <button
+          key={s}
+          type="button"
+          onClick={() => onChange(s)}
+          onMouseEnter={() => setHovered(s)}
+          onMouseLeave={() => setHovered(0)}
+          className={`text-3xl transition-transform active:scale-90 ${
+            s <= (hovered || value) ? "text-yellow-400" : "text-slate-200"
+          }`}
+        >
+          ★
+        </button>
+      ))}
+    </div>
+  );
+}
 
 type MenuItem = {
   id: string;
@@ -31,6 +73,9 @@ type Restaurant = {
   cuisine: string;
   coverImage: string;
   menu: MenuCategory[];
+  primaryColor?: string;
+  welcomeMessage?: string;
+  isDemo?: boolean;
 };
 
 type Tab = "menu" | "reservation" | "info";
@@ -53,22 +98,55 @@ function CategoryPills({
   active: string;
   onSelect: (id: string) => void;
 }) {
+  const primary = useContext(PrimaryColorCtx);
   return (
     <div className="flex gap-2 overflow-x-auto pb-1" style={{ scrollbarWidth: "none" }}>
       {menu.map((cat) => (
         <button
           key={cat.id}
           onClick={() => onSelect(cat.id)}
-          className={`shrink-0 px-4 py-2 rounded-full text-sm font-semibold transition-all ${
+          className="shrink-0 px-4 py-2 rounded-full text-sm font-semibold transition-all"
+          style={
             active === cat.id
-              ? "bg-orange-500 text-white shadow-md shadow-orange-200"
-              : "bg-white border border-slate-200 text-slate-600 hover:border-orange-300 hover:text-orange-600"
-          }`}
+              ? { backgroundColor: primary, color: "#fff" }
+              : { backgroundColor: "#fff", border: "1px solid #e2e8f0", color: "#475569" }
+          }
         >
           {cat.name}
         </button>
       ))}
     </div>
+  );
+}
+
+// ── Sous-composants couleur ───────────────────────────────────────────────────
+
+function PriceDisplay({ price }: { price: number }) {
+  const primary = useContext(PrimaryColorCtx);
+  return (
+    <div className="flex items-baseline gap-1">
+      <span className="font-extrabold text-base" style={{ color: primary }}>
+        {price.toLocaleString("fr-FR")}
+      </span>
+      <span className="text-xs font-medium" style={{ color: primary, opacity: 0.7 }}>FCFA</span>
+    </div>
+  );
+}
+
+function AddButton({ qty, onAdd }: { qty: number; onAdd: () => void }) {
+  const primary = useContext(PrimaryColorCtx);
+  return (
+    <button
+      onClick={onAdd}
+      className="shrink-0 w-10 h-10 rounded-xl flex items-center justify-center font-bold text-base transition-all active:scale-95"
+      style={
+        qty > 0
+          ? { backgroundColor: primary, color: "#fff" }
+          : { backgroundColor: primary + "18", color: primary }
+      }
+    >
+      {qty > 0 ? qty : "+"}
+    </button>
   );
 }
 
@@ -159,23 +237,9 @@ function MenuTab({
 
                     {/* Prix + bouton ajouter sur la même ligne */}
                     <div className="flex items-center justify-between mt-1">
-                      <div className="flex items-baseline gap-1">
-                        <span className="text-orange-600 font-extrabold text-base">
-                          {item.price.toLocaleString("fr-FR")}
-                        </span>
-                        <span className="text-orange-400 text-xs font-medium">FCFA</span>
-                      </div>
+                      <PriceDisplay price={item.price} />
                       {item.available && (
-                        <button
-                          onClick={() => onAdd(item)}
-                          className={`shrink-0 w-10 h-10 rounded-xl flex items-center justify-center font-bold text-base transition-all active:scale-95 ${
-                            qty > 0
-                              ? "bg-orange-500 text-white shadow-md shadow-orange-200"
-                              : "bg-orange-50 text-orange-500 hover:bg-orange-100"
-                          }`}
-                        >
-                          {qty > 0 ? qty : "+"}
-                        </button>
+                        <AddButton qty={qty} onAdd={() => onAdd(item)} />
                       )}
                     </div>
                   </div>
@@ -195,6 +259,7 @@ function CartDrawer({
   cart,
   restaurantId,
   initialTable,
+  isDemo,
   onClose,
   onRemove,
   onAdd,
@@ -203,6 +268,7 @@ function CartDrawer({
   cart: CartItem[];
   restaurantId: string;
   initialTable?: string;
+  isDemo?: boolean;
   onClose: () => void;
   onRemove: (itemId: string) => void;
   onAdd: (item: MenuItem) => void;
@@ -212,6 +278,12 @@ function CartDrawer({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
+  const [orderId, setOrderId] = useState<string | null>(null);
+  const [reviewRating, setReviewRating] = useState(0);
+  const [reviewComment, setReviewComment] = useState("");
+  const [reviewName, setReviewName] = useState("");
+  const [reviewSubmitted, setReviewSubmitted] = useState(false);
+  const [reviewLoading, setReviewLoading] = useState(false);
 
   const total = cart.reduce((s, c) => s + c.item.price * c.quantity, 0);
   const itemsText = cart.map((c) => `${c.quantity}x ${c.item.name}`).join(", ");
@@ -224,6 +296,13 @@ function CartDrawer({
     setLoading(true);
     setError(null);
     try {
+      if (isDemo) {
+        await new Promise((r) => setTimeout(r, 600));
+        setOrderId("demo-order");
+        setSuccess(true);
+        onClear();
+        return;
+      }
       const res = await fetch("/api/orders", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -238,6 +317,8 @@ function CartDrawer({
         const data = await res.json();
         throw new Error(data.error ?? "Erreur lors de la commande");
       }
+      const data = await res.json();
+      setOrderId(data.id ?? null);
       setSuccess(true);
       onClear();
     } catch (err) {
@@ -245,6 +326,24 @@ function CartDrawer({
     } finally {
       setLoading(false);
     }
+  }
+
+  async function handleReview() {
+    if (reviewRating === 0) return;
+    setReviewLoading(true);
+    await fetch("/api/reviews", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        restaurant_id: restaurantId,
+        order_id: orderId,
+        rating: reviewRating,
+        comment: reviewComment || null,
+        customer_name: reviewName || null,
+      }),
+    });
+    setReviewLoading(false);
+    setReviewSubmitted(true);
   }
 
   return (
@@ -263,20 +362,68 @@ function CartDrawer({
 
         <div className="flex-1 overflow-y-auto px-5 py-4">
           {success ? (
-            <div className="text-center py-16">
-              <div className="w-20 h-20 bg-green-50 rounded-full flex items-center justify-center mx-auto mb-4 text-4xl">
-                🎉
+            <div className="py-6">
+              <div className="text-center mb-6">
+                <div className="w-16 h-16 bg-green-50 rounded-full flex items-center justify-center mx-auto mb-3 text-3xl">
+                  🎉
+                </div>
+                <h3 className="text-lg font-extrabold text-slate-900 mb-1">Commande envoyée !</h3>
+                <p className="text-slate-500 text-sm">
+                  Le restaurant prépare votre commande.
+                </p>
               </div>
-              <h3 className="text-xl font-extrabold text-slate-900 mb-2">Commande envoyée !</h3>
-              <p className="text-slate-500 text-sm leading-relaxed">
-                Le restaurant a bien reçu votre commande et commence à la préparer.
-              </p>
-              <button
-                onClick={onClose}
-                className="mt-6 bg-orange-500 text-white font-bold px-8 py-3 rounded-xl text-sm hover:bg-orange-600 transition-colors"
-              >
-                Fermer
-              </button>
+
+              {reviewSubmitted ? (
+                <div className="text-center py-4">
+                  <div className="text-3xl mb-2">🌟</div>
+                  <p className="font-bold text-slate-900 mb-1">Merci pour votre avis !</p>
+                  <PrimaryBtn className="mt-4 px-8 py-3 text-sm" onClick={onClose}>
+                    Fermer
+                  </PrimaryBtn>
+                </div>
+              ) : (
+                <div className="bg-slate-50 rounded-2xl p-5 space-y-4">
+                  <p className="font-bold text-slate-900 text-center text-sm">
+                    Votre commande est envoyée ! Laissez un avis ?
+                  </p>
+                  <div className="flex justify-center">
+                    <StarPicker value={reviewRating} onChange={setReviewRating} />
+                  </div>
+                  {reviewRating > 0 && (
+                    <>
+                      <textarea
+                        value={reviewComment}
+                        onChange={(e) => setReviewComment(e.target.value)}
+                        placeholder="Votre commentaire (optionnel)"
+                        rows={2}
+                        className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400 resize-none"
+                      />
+                      <input
+                        type="text"
+                        value={reviewName}
+                        onChange={(e) => setReviewName(e.target.value)}
+                        placeholder="Votre prénom (optionnel)"
+                        className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400"
+                      />
+                    </>
+                  )}
+                  <div className="flex gap-2">
+                    <PrimaryBtn
+                      className="flex-1 py-3 text-sm disabled:opacity-60"
+                      onClick={handleReview}
+                      disabled={reviewRating === 0 || reviewLoading}
+                    >
+                      {reviewLoading ? "Envoi…" : "Envoyer l'avis"}
+                    </PrimaryBtn>
+                    <button
+                      onClick={onClose}
+                      className="text-slate-400 text-sm px-4 hover:text-slate-600 transition-colors"
+                    >
+                      Non merci
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
           ) : cart.length === 0 ? (
             <div className="text-center py-20 text-slate-400">
@@ -304,12 +451,7 @@ function CartDrawer({
                     <span className="w-5 text-center font-extrabold text-slate-900 text-sm">
                       {quantity}
                     </span>
-                    <button
-                      onClick={() => onAdd(item)}
-                      className="w-7 h-7 rounded-lg bg-orange-500 text-white font-bold flex items-center justify-center hover:bg-orange-600 transition-colors"
-                    >
-                      +
-                    </button>
+                    <AddButton qty={0} onAdd={() => onAdd(item)} />
                   </div>
                 </div>
               ))}
@@ -350,13 +492,9 @@ function CartDrawer({
                 />
               )}
             </div>
-            <button
-              onClick={handleOrder}
-              disabled={loading}
-              className="w-full bg-orange-500 hover:bg-orange-600 disabled:opacity-60 text-white font-bold py-4 rounded-xl transition-colors text-sm shadow-lg shadow-orange-200"
-            >
+            <PrimaryBtn className="w-full py-4 text-sm disabled:opacity-60" onClick={handleOrder} disabled={loading}>
               {loading ? "Envoi en cours…" : `Commander · ${total.toLocaleString("fr-FR")} FCFA`}
-            </button>
+            </PrimaryBtn>
           </div>
         )}
       </div>
@@ -493,10 +631,9 @@ function ReservationTab({ name, restaurantId }: { name: string; restaurantId: st
             className="w-full border border-slate-200 rounded-xl px-4 py-3 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-orange-400" />
         </div>
 
-        <button type="submit" disabled={loading}
-          className="w-full bg-orange-500 hover:bg-orange-600 disabled:opacity-60 text-white font-bold py-4 rounded-xl transition-colors shadow-lg shadow-orange-200">
+        <PrimaryBtn className="w-full py-4 disabled:opacity-60" disabled={loading}>
           {loading ? "Envoi en cours…" : "Confirmer la réservation"}
-        </button>
+        </PrimaryBtn>
       </form>
     </div>
   );
@@ -539,6 +676,64 @@ function InfoTab({ restaurant }: { restaurant: Restaurant }) {
   );
 }
 
+// ── Bouton primaire générique ─────────────────────────────────────────────────
+
+function PrimaryBtn({
+  children,
+  className = "",
+  onClick,
+  disabled,
+}: {
+  children: React.ReactNode;
+  className?: string;
+  onClick?: () => void;
+  disabled?: boolean;
+}) {
+  const primary = useContext(PrimaryColorCtx);
+  return (
+    <button
+      onClick={onClick}
+      disabled={disabled}
+      className={`font-bold rounded-xl transition-colors text-white ${className}`}
+      style={{ backgroundColor: primary }}
+    >
+      {children}
+    </button>
+  );
+}
+
+// ── Section avis ─────────────────────────────────────────────────────────────
+
+function ReviewsSection({ reviews }: { reviews: Review[] }) {
+  if (reviews.length === 0) return null;
+  return (
+    <section className="max-w-5xl mx-auto px-4 py-8 border-t border-slate-100">
+      <h2 className="text-lg font-extrabold text-slate-900 mb-4">Avis clients</h2>
+      <div className="grid gap-3 sm:grid-cols-2">
+        {reviews.map((review) => (
+          <div key={review.id} className="bg-white rounded-2xl border border-slate-100 p-4">
+            <div className="flex items-start justify-between gap-2 mb-1.5">
+              <StarDisplay rating={review.rating} />
+              <span className="text-xs text-slate-400 shrink-0">
+                {new Date(review.created_at).toLocaleDateString("fr-FR", {
+                  day: "numeric",
+                  month: "short",
+                })}
+              </span>
+            </div>
+            {review.customer_name && (
+              <p className="text-xs font-semibold text-slate-600 mb-1">{review.customer_name}</p>
+            )}
+            {review.comment && (
+              <p className="text-slate-500 text-sm leading-relaxed">{review.comment}</p>
+            )}
+          </div>
+        ))}
+      </div>
+    </section>
+  );
+}
+
 // ── Page principale ───────────────────────────────────────────────────────────
 
 export default function RestaurantPageClient({
@@ -551,6 +746,21 @@ export default function RestaurantPageClient({
   const [activeTab, setActiveTab] = useState<Tab>("menu");
   const [cart, setCart] = useState<CartItem[]>([]);
   const [cartOpen, setCartOpen] = useState(false);
+  const [reviews, setReviews] = useState<Review[]>([]);
+  const primary = restaurant.primaryColor || "#f97316";
+  const isDemo = restaurant.isDemo ?? false;
+
+  useEffect(() => {
+    fetch(`/api/reviews?restaurant_id=${restaurant.id}&limit=10`)
+      .then((r) => r.json())
+      .then((data) => { if (Array.isArray(data)) setReviews(data); })
+      .catch(() => {});
+  }, [restaurant.id]);
+
+  const avgRating =
+    reviews.length > 0
+      ? (reviews.reduce((s, r) => s + r.rating, 0) / reviews.length).toFixed(1)
+      : null;
 
   function addToCart(item: MenuItem) {
     setCart((prev) => {
@@ -573,9 +783,20 @@ export default function RestaurantPageClient({
   const cartTotal = cart.reduce((s, c) => s + c.item.price * c.quantity, 0);
 
   return (
+    <PrimaryColorCtx.Provider value={primary}>
     <div className="min-h-screen bg-slate-50">
+      {/* ── Bannière démo ── */}
+      {isDemo && (
+        <div className="fixed top-0 left-0 right-0 z-[60] bg-amber-400 text-amber-900 text-center text-xs font-bold py-2 px-4 flex items-center justify-center gap-2">
+          <span>⚠️</span>
+          Ceci est une démo — Les commandes ne sont pas réelles
+          <a href="/inscription" className="ml-3 underline font-extrabold hover:text-amber-700">
+            Créer mon restaurant →
+          </a>
+        </div>
+      )}
       {/* ── Navbar ── */}
-      <nav className="fixed top-0 left-0 right-0 z-50 bg-white/95 backdrop-blur-md border-b border-slate-100 shadow-sm">
+      <nav className={`fixed left-0 right-0 z-50 bg-white/95 backdrop-blur-md border-b border-slate-100 shadow-sm ${isDemo ? "top-8" : "top-0"}`}>
         <div className="max-w-5xl mx-auto px-4 h-14 flex items-center justify-between">
           <div className="min-w-0">
             <div className="font-extrabold text-slate-900 truncate leading-tight">{restaurant.name}</div>
@@ -604,7 +825,8 @@ export default function RestaurantPageClient({
             </button>
             <button
               onClick={() => setActiveTab("reservation")}
-              className="bg-orange-500 hover:bg-orange-600 active:bg-orange-700 text-white text-sm font-bold px-4 py-2 rounded-xl transition-colors"
+              className="text-white text-sm font-bold px-4 py-2 rounded-xl transition-colors"
+              style={{ backgroundColor: primary }}
             >
               Réserver
             </button>
@@ -630,7 +852,8 @@ export default function RestaurantPageClient({
             {/* Badges */}
             <div className="flex flex-wrap gap-2 mb-3">
               {restaurant.cuisine && (
-                <span className="bg-orange-500 text-white text-xs font-bold px-3 py-1 rounded-full shadow">
+                <span className="text-white text-xs font-bold px-3 py-1 rounded-full shadow"
+                  style={{ backgroundColor: primary }}>
                   {restaurant.cuisine}
                 </span>
               )}
@@ -651,6 +874,16 @@ export default function RestaurantPageClient({
             {restaurant.tagline && (
               <p className="text-white/70 text-sm mt-1.5 font-medium">{restaurant.tagline}</p>
             )}
+            {restaurant.welcomeMessage && (
+              <p className="text-white/90 text-sm mt-1 font-semibold">{restaurant.welcomeMessage}</p>
+            )}
+            {avgRating && (
+              <div className="flex items-center gap-1.5 mt-2">
+                <span className="text-yellow-400 text-base">★</span>
+                <span className="text-white font-bold text-sm">{avgRating}</span>
+                <span className="text-white/60 text-xs">({reviews.length} avis)</span>
+              </div>
+            )}
           </div>
         </div>
       </section>
@@ -662,11 +895,12 @@ export default function RestaurantPageClient({
             <button
               key={tab}
               onClick={() => setActiveTab(tab)}
-              className={`flex items-center gap-1.5 py-4 px-5 text-sm font-bold border-b-2 whitespace-nowrap transition-all ${
+              className="flex items-center gap-1.5 py-4 px-5 text-sm font-bold border-b-2 whitespace-nowrap transition-all"
+              style={
                 activeTab === tab
-                  ? "border-orange-500 text-orange-600"
-                  : "border-transparent text-slate-500 hover:text-slate-800"
-              }`}
+                  ? { borderColor: primary, color: primary }
+                  : { borderColor: "transparent", color: "#64748b" }
+              }
             >
               {tab === "menu" && "🍽️"}
               {tab === "reservation" && "📅"}
@@ -688,6 +922,9 @@ export default function RestaurantPageClient({
         {activeTab === "info" && <InfoTab restaurant={restaurant} />}
       </main>
 
+      {/* ── Avis clients ── */}
+      <ReviewsSection reviews={reviews} />
+
       {/* ── Footer ── */}
       <footer className="border-t border-slate-100 py-8 text-center">
         <p className="text-xs text-slate-400">
@@ -701,7 +938,8 @@ export default function RestaurantPageClient({
         <div className="fixed bottom-4 left-4 right-4 z-40 sm:hidden">
           <button
             onClick={() => setCartOpen(true)}
-            className="w-full bg-orange-500 text-white font-bold py-4 px-5 rounded-2xl shadow-2xl shadow-orange-400/40 flex items-center justify-between active:scale-[0.98] transition-transform"
+            className="w-full text-white font-bold py-4 px-5 rounded-2xl shadow-2xl flex items-center justify-between active:scale-[0.98] transition-transform"
+            style={{ backgroundColor: primary }}
           >
             <span className="flex items-center gap-2.5">
               <span className="bg-white/25 rounded-lg w-8 h-8 flex items-center justify-center text-sm font-extrabold">
@@ -722,6 +960,7 @@ export default function RestaurantPageClient({
           cart={cart}
           restaurantId={restaurant.id}
           initialTable={tableParam}
+          isDemo={isDemo}
           onClose={() => setCartOpen(false)}
           onRemove={removeFromCart}
           onAdd={addToCart}
@@ -729,5 +968,6 @@ export default function RestaurantPageClient({
         />
       )}
     </div>
+    </PrimaryColorCtx.Provider>
   );
 }

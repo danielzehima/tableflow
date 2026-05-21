@@ -29,6 +29,8 @@ export default function Sidebar({ isOpen = false, onClose, restaurantName, resta
     { href: "/dashboard/reservations", icon: CalIcon, label: "Réservations", always: true },
     { href: "/dashboard/commandes", icon: OrderIcon, label: "Commandes", always: true },
     { href: "/dashboard/analytics", icon: ChartIcon, label: "Analytics", show: canManageMenu(userRole) },
+    { href: "/dashboard/personnalisation", icon: PaletteIcon, label: "Personnalisation", show: canManageMenu(userRole) },
+    { href: "/dashboard/avis", icon: StarIcon, label: "Avis clients", show: canManageMenu(userRole) },
     { href: "/dashboard/cuisine", icon: ChefIcon, label: "Vue Cuisine", always: true },
     { href: "/dashboard/menu", icon: MenuIcon, label: "Menu digital", show: canManageMenu(userRole) },
     { href: "/dashboard/tables", icon: QrIcon, label: "Tables & QR", show: canManageMenu(userRole) },
@@ -179,6 +181,13 @@ function LogoutIcon({ className }: { className?: string }) {
     </svg>
   );
 }
+function PaletteIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zm0 0h12a2 2 0 002-2v-4a2 2 0 00-2-2h-2.343M11 7.343l1.657-1.657a2 2 0 012.828 0l2.829 2.829a2 2 0 010 2.828l-8.486 8.485M7 17h.01" />
+    </svg>
+  );
+}
 function ChartIcon({ className }: { className?: string }) {
   return (
     <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -190,6 +199,13 @@ function QrIcon({ className }: { className?: string }) {
   return (
     <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm12 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z" />
+    </svg>
+  );
+}
+function StarIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z" />
     </svg>
   );
 }

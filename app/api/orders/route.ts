@@ -9,12 +9,31 @@ export async function GET(req: Request) {
     return NextResponse.json({ error: "restaurant_id requis" }, { status: 400 });
   }
 
-  const { data, error } = await supabase
+  const since = searchParams.get("since");
+  const period = searchParams.get("period");
+  const limit = Math.min(parseInt(searchParams.get("limit") ?? "20"), 500);
+
+  let query = supabase
     .from("orders")
     .select("*")
     .eq("restaurant_id", restaurant_id)
     .order("created_at", { ascending: false })
-    .limit(20);
+    .limit(limit);
+
+  if (since) {
+    query = query.gt("created_at", since);
+  } else if (period) {
+    const now = new Date();
+    let from: Date;
+    if (period === "today") {
+      from = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    } else {
+      from = new Date(now.getTime() - parseInt(period) * 24 * 60 * 60 * 1000);
+    }
+    query = query.gte("created_at", from.toISOString());
+  }
+
+  const { data, error } = await query;
 
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 });

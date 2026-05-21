@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 
-export function middleware(request: NextRequest) {
+export function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
   // ── Superadmin guard ────────────────────────────────────────────
@@ -17,10 +17,7 @@ export function middleware(request: NextRequest) {
   }
 
   // ── Dashboard gérant guard ──────────────────────────────────────
-  if (
-    pathname.startsWith("/dashboard") &&
-    !pathname.startsWith("/api/")
-  ) {
+  if (pathname.startsWith("/dashboard")) {
     const session = request.cookies.get("tf_session")?.value;
     if (!session) {
       return NextResponse.redirect(new URL("/login", request.url));
@@ -39,6 +36,5 @@ export const config = {
     "/superadmin/:path*",
     "/api/superadmin/:path*",
     "/dashboard/:path*",
-    "/login",
   ],
 };

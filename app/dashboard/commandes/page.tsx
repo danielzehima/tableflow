@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { supabaseClient } from "../../lib/supabase-client";
 
 type OrderStatus = "pending" | "preparing" | "ready" | "served" | "paid" | "cancelled";
@@ -33,13 +33,20 @@ const NEXT_STATUS: Record<string, { status: OrderStatus; label: string }> = {
   served:    { status: "paid",      label: "Encaisser" },
 };
 
-const FILTERS: { key: OrderStatus | "all"; label: string }[] = [
+const STATUS_FILTERS: { key: OrderStatus | "all"; label: string }[] = [
   { key: "all",      label: "Toutes" },
   { key: "pending",  label: "En attente" },
   { key: "preparing",label: "En préparation" },
   { key: "ready",    label: "Prêt" },
   { key: "served",   label: "Servi" },
   { key: "paid",     label: "Payé" },
+];
+
+const PERIOD_FILTERS: { key: string; label: string }[] = [
+  { key: "all",   label: "Tout" },
+  { key: "today", label: "Aujourd'hui" },
+  { key: "7",     label: "7 jours" },
+  { key: "30",    label: "30 jours" },
 ];
 
 const EMPTY_ORDER = { table_number: "", items: "", notes: "", total: "" };
@@ -56,10 +63,14 @@ export default function CommandesPage() {
   const [tables, setTables] = useState<Table[]>([]);
   const [loading, setLoading] = useState(true);
   const [restaurantId, setRestaurantId] = useState<string | null>(null);
+  const [restaurantName, setRestaurantName] = useState("Restaurant");
   const [updating, setUpdating] = useState<string | null>(null);
   const [filter, setFilter] = useState<OrderStatus | "all">("all");
+  const [period, setPeriod] = useState("all");
   const [connected, setConnected] = useState(false);
   const [, setTick] = useState(0);
+  const [showExportMenu, setShowExportMenu] = useState(false);
+  const exportRef = useRef<HTMLDivElement>(null);
 
   // Nouvelle commande
   const [showNewOrder, setShowNewOrder] = useState(false);
@@ -77,8 +88,11 @@ export default function CommandesPage() {
     return map[o.status as string] ? { ...o, status: map[o.status as string] } : o;
   };
 
-  const loadOrders = useCallback(async (rid: string) => {
-    const r = await fetch(`/api/orders?restaurant_id=${rid}`);
+  const loadOrders = useCallback(async (rid: string, p?: string) => {
+    const params = new URLSearchParams({ restaurant_id: rid, limit: "200" });
+    const activePeriod = p ?? "all";
+    if (activePeriod !== "all") params.set("period", activePeriod);
+    const r = await fetch(`/api/orders?${params}`);
     if (r.ok) {
       const data: Order[] = await r.json();
       setOrders(data.map(normalize));
@@ -92,9 +106,9 @@ export default function CommandesPage() {
       if (!res.ok) { setLoading(false); return; }
       const restaurant = await res.json();
       setRestaurantId(restaurant.id);
-      await loadOrders(restaurant.id);
+      setRestaurantName(restaurant.name ?? "Restaurant");
+      await loadOrders(restaurant.id, "all");
 
-      // Charger les tables pour le formulaire
       const tr = await fetch(`/api/tables?restaurant_id=${restaurant.id}`);
       if (tr.ok) setTables(await tr.json());
 
@@ -102,6 +116,22 @@ export default function CommandesPage() {
     }
     init();
   }, [loadOrders]);
+
+  useEffect(() => {
+    if (!restaurantId) return;
+    loadOrders(restaurantId, period);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [period]);
+
+  useEffect(() => {
+    function handleClickOutside(e: MouseEvent) {
+      if (exportRef.current && !exportRef.current.contains(e.target as Node)) {
+        setShowExportMenu(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
 
   useEffect(() => {
     if (!restaurantId) return;
@@ -191,23 +221,62 @@ export default function CommandesPage() {
     setOrderSaving(false);
   }
 
-  function exportCSV() {
-    const headers = ["Table", "Articles", "Total (FCFA)", "Statut", "Date"];
-    const rows = filtered.map((o) => [
-      `"${o.table_number}"`,
-      `"${o.items.replace(/"/g, '""')}"`,
+  function buildExportRows() {
+    return filtered.map((o) => [
+      new Date(o.created_at).toLocaleString("fr-FR"),
+      o.table_number,
+      o.items,
       Number(o.total),
       STATUS_CONFIG[o.status]?.label ?? o.status,
-      `"${new Date(o.created_at).toLocaleString("fr-FR")}"`,
     ]);
-    const csv = [headers, ...rows].map((r) => r.join(";")).join("\n");
-    const blob = new Blob(["﻿" + csv], { type: "text/csv;charset=utf-8;" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `commandes-${new Date().toLocaleDateString("fr-CA")}.csv`;
-    a.click();
-    URL.revokeObjectURL(url);
+  }
+
+  const exportHeaders = ["Date/Heure", "Table", "Articles", "Total (FCFA)", "Statut"];
+  const exportSlug = restaurantName.toLowerCase().replace(/[^a-z0-9]/g, "-").replace(/-+/g, "-");
+  const exportDate = new Date().toLocaleDateString("fr-CA");
+
+  async function exportExcel() {
+    setShowExportMenu(false);
+    const XLSX = await import("xlsx");
+    const ws = XLSX.utils.aoa_to_sheet([exportHeaders, ...buildExportRows()]);
+    ws["!cols"] = [{ wch: 20 }, { wch: 12 }, { wch: 40 }, { wch: 14 }, { wch: 16 }];
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Commandes");
+    XLSX.writeFile(wb, `commandes-${exportSlug}-${exportDate}.xlsx`);
+  }
+
+  async function exportPDF() {
+    setShowExportMenu(false);
+    const { jsPDF } = await import("jspdf");
+    const autoTable = (await import("jspdf-autotable")).default;
+    const doc = new jsPDF({ orientation: "landscape" });
+
+    doc.setFontSize(20);
+    doc.setFont("helvetica", "bold");
+    doc.setTextColor(249, 115, 22);
+    doc.text("TableFlow", 14, 18);
+
+    doc.setFontSize(12);
+    doc.setFont("helvetica", "normal");
+    doc.setTextColor(30, 30, 30);
+    doc.text(restaurantName, 14, 27);
+
+    doc.setFontSize(9);
+    doc.setTextColor(100, 100, 100);
+    const periodLabel = PERIOD_FILTERS.find((p) => p.key === period)?.label ?? "Tout";
+    doc.text(`Export commandes — ${periodLabel} — ${new Date().toLocaleDateString("fr-FR")}`, 14, 34);
+
+    autoTable(doc, {
+      startY: 40,
+      head: [exportHeaders],
+      body: buildExportRows(),
+      styles: { fontSize: 8, cellPadding: 3 },
+      headStyles: { fillColor: [249, 115, 22], textColor: 255, fontStyle: "bold" },
+      alternateRowStyles: { fillColor: [250, 250, 252] },
+      columnStyles: { 2: { cellWidth: 80 } },
+    });
+
+    doc.save(`commandes-${exportSlug}-${exportDate}.pdf`);
   }
 
   const today = new Date().toLocaleDateString("fr-CA");
@@ -240,15 +309,35 @@ export default function CommandesPage() {
             <div className={`w-2 h-2 rounded-full ${connected ? "bg-emerald-400 animate-pulse" : "bg-slate-400"}`} />
             <span className="text-green-700">{connected ? "En direct" : "Hors ligne"}</span>
           </div>
-          <button
-            onClick={exportCSV}
-            className="hidden sm:inline-flex items-center gap-2 bg-white border border-slate-200 hover:border-orange-300 text-slate-700 hover:text-orange-600 text-sm font-semibold px-4 py-2 rounded-xl transition-colors"
-          >
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-            </svg>
-            Exporter CSV
-          </button>
+
+          {/* Export dropdown */}
+          <div className="relative hidden sm:block" ref={exportRef}>
+            <button
+              onClick={() => setShowExportMenu((v) => !v)}
+              className="inline-flex items-center gap-2 bg-white border border-slate-200 hover:border-orange-300 text-slate-700 hover:text-orange-600 text-sm font-semibold px-4 py-2 rounded-xl transition-colors"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+              </svg>
+              Exporter
+              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+              </svg>
+            </button>
+            {showExportMenu && (
+              <div className="absolute right-0 mt-1 w-44 bg-white rounded-xl border border-slate-200 shadow-xl z-10 overflow-hidden">
+                <button onClick={exportExcel}
+                  className="w-full flex items-center gap-2.5 px-4 py-3 text-sm text-slate-700 hover:bg-orange-50 hover:text-orange-600 transition-colors">
+                  <span className="text-base">📊</span> Excel (.xlsx)
+                </button>
+                <button onClick={exportPDF}
+                  className="w-full flex items-center gap-2.5 px-4 py-3 text-sm text-slate-700 hover:bg-orange-50 hover:text-orange-600 transition-colors border-t border-slate-100">
+                  <span className="text-base">📄</span> PDF
+                </button>
+              </div>
+            )}
+          </div>
+
           <button
             onClick={() => { setShowNewOrder(true); setOrderError(""); setOrderForm({ ...EMPTY_ORDER }); }}
             className="inline-flex items-center gap-2 bg-orange-500 hover:bg-orange-600 text-white text-sm font-semibold px-4 py-2 rounded-xl transition-colors"
@@ -380,9 +469,22 @@ export default function CommandesPage() {
         </div>
       </div>
 
-      {/* Filtres */}
+      {/* Filtre période */}
+      <div className="flex gap-2 flex-wrap items-center">
+        <span className="text-xs font-semibold text-slate-400 uppercase tracking-wide mr-1">Période :</span>
+        {PERIOD_FILTERS.map(({ key, label }) => (
+          <button key={key} onClick={() => setPeriod(key)}
+            className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-colors ${
+              period === key ? "bg-slate-800 text-white" : "bg-white text-slate-600 border border-slate-200 hover:border-slate-400"
+            }`}>
+            {label}
+          </button>
+        ))}
+      </div>
+
+      {/* Filtre statut */}
       <div className="flex gap-2 flex-wrap">
-        {FILTERS.map(({ key, label }) => {
+        {STATUS_FILTERS.map(({ key, label }) => {
           const count = key === "all" ? orders.length : orders.filter((o) => o.status === key).length;
           return (
             <button key={key} onClick={() => setFilter(key)}

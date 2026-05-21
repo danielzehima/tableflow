@@ -1,10 +1,12 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import Navbar from "../components/Navbar";
 import Footer from "../components/Footer";
 
 export default function InscriptionPage() {
+  const router = useRouter();
   const [done, setDone] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -29,7 +31,17 @@ export default function InscriptionPage() {
       });
       const data = await res.json();
       if (!res.ok) { setError(data.error || "Erreur lors de l'inscription"); return; }
-      document.cookie = `restaurant_slug=${data.slug}; path=/; max-age=31536000; SameSite=Lax`;
+
+      // Auto-login après inscription
+      const loginRes = await fetch("/api/auth/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: form.email, password: form.password }),
+      });
+      if (loginRes.ok) {
+        router.push("/dashboard");
+        return;
+      }
       setDone(true);
     } catch {
       setError("Erreur de connexion, veuillez réessayer");

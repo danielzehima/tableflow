@@ -2,10 +2,12 @@
 
 import { useState } from "react";
 import Sidebar from "./Sidebar";
+import OrderNotificationBell from "./OrderNotificationBell";
 import type { Role } from "../../lib/auth";
 
 type Props = {
   children: React.ReactNode;
+  restaurantId: string;
   restaurantName: string;
   restaurantSlug: string;
   userName: string;
@@ -16,7 +18,7 @@ function getInitials(name: string): string {
   return name.split(" ").map((w) => w[0]).join("").toUpperCase().slice(0, 2);
 }
 
-export default function DashboardShell({ children, restaurantName, restaurantSlug, userName, userRole }: Props) {
+export default function DashboardShell({ children, restaurantId, restaurantName, restaurantSlug, userName, userRole }: Props) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const initials = getInitials(userName || restaurantName);
 
@@ -53,6 +55,7 @@ export default function DashboardShell({ children, restaurantName, restaurantSlu
           </div>
 
           <div className="flex items-center gap-3">
+            <OrderNotificationBell restaurantId={restaurantId} />
             <div className="hidden sm:flex items-center gap-2 text-right">
               <div>
                 <div className="text-slate-800 text-xs font-semibold leading-tight">{userName}</div>

@@ -1,5 +1,5 @@
-import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
+import { headers } from "next/headers";
 import { supabase } from "../lib/supabase-server";
 import { getSession } from "../lib/auth-server";
 import DashboardShell from "./components/DashboardShell";
@@ -8,25 +8,29 @@ export default async function DashboardLayout({ children }: { children: React.Re
   const session = await getSession();
   if (!session) redirect("/login");
 
-  // Fetch restaurant info
   const { data: restaurant } = await supabase
     .from("restaurants")
-    .select("id, name, slug")
+    .select("id, name, slug, onboarding_done")
     .eq("id", session.restaurantId)
     .single();
 
   if (!restaurant) redirect("/login");
 
-  // Keep slug cookie in sync (used by public APIs)
-  const cookieStore = await cookies();
-  if (cookieStore.get("restaurant_slug")?.value !== restaurant.slug) {
-    cookieStore.set("restaurant_slug", restaurant.slug, {
-      path: "/", maxAge: 31536000, sameSite: "lax",
-    });
+  const h = await headers();
+  const pathname = h.get("x-pathname") ?? "";
+  const isOnboarding = pathname === "/dashboard/onboarding";
+
+  if (!restaurant.onboarding_done && !isOnboarding) {
+    redirect("/dashboard/onboarding");
+  }
+
+  if (isOnboarding) {
+    return <>{children}</>;
   }
 
   return (
     <DashboardShell
+      restaurantId={restaurant.id}
       restaurantName={restaurant.name}
       restaurantSlug={restaurant.slug}
       userName={session.name}

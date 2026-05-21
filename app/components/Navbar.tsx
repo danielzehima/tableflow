@@ -22,6 +22,12 @@ export default function Navbar() {
           >
             Tarifs
           </a>
+          <a
+            href="/demo"
+            className="text-orange-500 hover:text-orange-600 transition-colors text-sm font-semibold"
+          >
+            Démo →
+          </a>
         </div>
 
         <div className="flex items-center gap-3">

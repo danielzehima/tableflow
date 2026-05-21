@@ -1,4 +1,6 @@
+"use client";
 import Image from "next/image";
+import { useEffect, useState } from "react";
 
 const stats = [
   { value: "+2 000", label: "Restaurants actifs" },
@@ -8,6 +10,13 @@ const stats = [
 ];
 
 export default function Hero() {
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    const t = setTimeout(() => setMounted(true), 80);
+    return () => clearTimeout(t);
+  }, []);
+
   return (
     <section className="relative min-h-screen flex flex-col justify-center overflow-hidden text-white">
       {/* Image de fond */}
@@ -62,10 +71,10 @@ export default function Hero() {
               Démarrer gratuitement →
             </a>
             <a
-              href="/#features"
-              className="w-full sm:w-auto bg-white/10 hover:bg-white/20 text-white font-semibold px-6 md:px-8 py-3.5 md:py-4 rounded-xl text-base md:text-lg border border-white/30 backdrop-blur-sm transition-all hover:-translate-y-0.5"
+              href="/demo"
+              className="w-full sm:w-auto bg-white/10 hover:bg-white/20 text-white font-semibold px-6 md:px-8 py-3.5 md:py-4 rounded-xl text-base md:text-lg border border-white/30 backdrop-blur-sm transition-all hover:-translate-y-0.5 flex items-center justify-center gap-2"
             >
-              Voir une démo
+              <span>▶</span> Voir la démo
             </a>
           </div>
 
@@ -78,10 +87,13 @@ export default function Hero() {
 
         {/* Stats */}
         <div className="mt-12 md:mt-20 grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-6">
-          {stats.map((stat) => (
+          {stats.map((stat, i) => (
             <div
               key={stat.label}
-              className="text-center bg-white/8 backdrop-blur-sm border border-white/10 rounded-2xl py-4 md:py-6 px-3 md:px-4"
+              style={{ transitionDelay: `${200 + i * 100}ms` }}
+              className={`text-center bg-white/8 backdrop-blur-sm border border-white/10 rounded-2xl py-4 md:py-6 px-3 md:px-4 transition-all duration-700 ${
+                mounted ? "opacity-100 translate-y-0" : "opacity-0 translate-y-6"
+              }`}
             >
               <div className="text-2xl md:text-3xl font-extrabold text-orange-400 drop-shadow">
                 {stat.value}

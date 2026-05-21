@@ -3,8 +3,13 @@ import { redirect } from "next/navigation";
 import { createHmac, timingSafeEqual } from "crypto";
 import { NextResponse } from "next/server";
 
-const SECRET = (process.env.AUTH_SECRET ?? "tableflow-change-in-production").replace(/^﻿/, "");
-const ADMIN_EMAIL = (process.env.SUPERADMIN_EMAIL ?? "").replace(/^﻿/, "").trim();
+// Supprime le BOM (U+FEFF) ajouté par certains éditeurs sur les variables d'env
+function stripBom(s: string): string {
+  return (s.charCodeAt(0) === 0xFEFF ? s.slice(1) : s).trim();
+}
+
+const SECRET = stripBom(process.env.AUTH_SECRET ?? "tableflow-change-in-production");
+const ADMIN_EMAIL = stripBom(process.env.SUPERADMIN_EMAIL ?? "");
 
 type AdminSession = { email: string; role: string; exp: number };
 

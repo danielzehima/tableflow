@@ -1,6 +1,11 @@
 import { pbkdf2Sync, randomBytes, createHmac, timingSafeEqual } from "crypto";
 
-const SECRET = process.env.AUTH_SECRET ?? "tableflow-change-in-production";
+// Supprime le BOM (U+FEFF) ajouté par certains éditeurs sur les variables d'env
+function stripBom(s: string): string {
+  return (s.charCodeAt(0) === 0xFEFF ? s.slice(1) : s).trim();
+}
+
+const SECRET = stripBom(process.env.AUTH_SECRET ?? "tableflow-change-in-production");
 const COOKIE = "tf_session";
 
 export { COOKIE };

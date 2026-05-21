@@ -1,25 +1,15 @@
 import { notFound } from "next/navigation";
 import { supabase } from "../lib/supabase-server";
-import RestaurantPageClient from "./RestaurantPageClient";
+import RestaurantPageClient from "../[restaurantSlug]/RestaurantPageClient";
 
-type Props = {
-  params: Promise<{ restaurantSlug: string }>;
-  searchParams: Promise<{ table?: string }>;
-};
-
-export default async function RestaurantPage({ params, searchParams }: Props) {
-  const { restaurantSlug } = await params;
-  const { table: tableParam } = await searchParams;
-
-  const { data: restaurant, error } = await supabase
+export default async function DemoPage() {
+  const { data: restaurant } = await supabase
     .from("restaurants")
     .select("*")
-    .eq("slug", restaurantSlug)
+    .eq("is_demo", true)
     .single();
 
-  if (error || !restaurant) {
-    notFound();
-  }
+  if (!restaurant) notFound();
 
   const { data: categories } = await supabase
     .from("menu_categories")
@@ -33,19 +23,11 @@ export default async function RestaurantPage({ params, searchParams }: Props) {
     items: (cat.menu_items ?? [])
       .sort((a: { position: number }, b: { position: number }) => a.position - b.position)
       .map((item: {
-        id: string;
-        name: string;
-        description: string;
-        price: number;
-        available: boolean;
-        image_url?: string | null;
+        id: string; name: string; description: string; price: number;
+        available: boolean; image_url?: string | null;
       }) => ({
-        id: item.id,
-        name: item.name,
-        description: item.description,
-        price: item.price,
-        available: item.available,
-        image_url: item.image_url ?? undefined,
+        id: item.id, name: item.name, description: item.description,
+        price: item.price, available: item.available, image_url: item.image_url ?? undefined,
       })),
   }));
 
@@ -63,8 +45,9 @@ export default async function RestaurantPage({ params, searchParams }: Props) {
     coverImage: restaurant.cover_image || "/hero-restaurant.png",
     primaryColor: restaurant.primary_color || "#f97316",
     welcomeMessage: restaurant.welcome_message || "",
+    isDemo: true,
     menu,
   };
 
-  return <RestaurantPageClient restaurant={restaurantData} tableParam={tableParam ?? ""} />;
+  return <RestaurantPageClient restaurant={restaurantData} tableParam="5" />;
 }

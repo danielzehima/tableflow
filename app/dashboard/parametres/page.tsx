@@ -17,13 +17,11 @@ type Restaurant = {
   cover_image: string;
 };
 
-function readSlug(): string {
-  try {
-    const match = document.cookie.match(/(?:^|;\s*)restaurant_slug=([^;]+)/);
-    return match ? decodeURIComponent(match[1]) : "le-bonus";
-  } catch {
-    return "le-bonus";
-  }
+async function fetchRestaurantSlug(): Promise<string> {
+  const res = await fetch("/api/auth/me");
+  if (!res.ok) return "";
+  const data = await res.json();
+  return data.restaurant?.slug ?? "";
 }
 
 export default function ParametresPage() {
@@ -39,7 +37,8 @@ export default function ParametresPage() {
 
   useEffect(() => {
     async function init() {
-      const slug = readSlug();
+      const slug = await fetchRestaurantSlug();
+      if (!slug) { setLoading(false); return; }
       const res = await fetch(`/api/restaurants/${slug}`);
       if (!res.ok) { setLoading(false); return; }
       const data = await res.json();

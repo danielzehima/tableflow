@@ -1,3 +1,6 @@
+"use client";
+import { useEffect, useRef, useState } from "react";
+
 const features = [
   {
     icon: "📋",
@@ -37,6 +40,51 @@ const features = [
   },
 ];
 
+function FeatureCard({
+  feature,
+  index,
+}: {
+  feature: { icon: string; title: string; description: string };
+  index: number;
+}) {
+  const ref = useRef<HTMLDivElement>(null);
+  const [visible, setVisible] = useState(false);
+
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const obs = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) {
+          setVisible(true);
+          obs.disconnect();
+        }
+      },
+      { threshold: 0.1 }
+    );
+    obs.observe(el);
+    return () => obs.disconnect();
+  }, []);
+
+  return (
+    <div
+      ref={ref}
+      style={{ transitionDelay: `${index * 80}ms` }}
+      className={`p-6 md:p-8 rounded-2xl border border-slate-100 hover:border-orange-200 hover:shadow-xl hover:shadow-orange-50 transition-all duration-500 bg-white ${
+        visible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-6"
+      }`}
+    >
+      <div className="text-3xl md:text-4xl mb-3 md:mb-4">{feature.icon}</div>
+      <h3 className="text-lg md:text-xl font-bold text-slate-900 mb-2 md:mb-3">
+        {feature.title}
+      </h3>
+      <p className="text-slate-500 leading-relaxed text-sm md:text-base">
+        {feature.description}
+      </p>
+    </div>
+  );
+}
+
 export default function Features() {
   return (
     <section id="features" className="py-16 md:py-24 px-4 md:px-6 bg-white">
@@ -56,19 +104,8 @@ export default function Features() {
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5 md:gap-8">
-          {features.map((feature) => (
-            <div
-              key={feature.title}
-              className="p-6 md:p-8 rounded-2xl border border-slate-100 hover:border-orange-200 hover:shadow-xl hover:shadow-orange-50 transition-all duration-300 bg-white"
-            >
-              <div className="text-3xl md:text-4xl mb-3 md:mb-4">{feature.icon}</div>
-              <h3 className="text-lg md:text-xl font-bold text-slate-900 mb-2 md:mb-3">
-                {feature.title}
-              </h3>
-              <p className="text-slate-500 leading-relaxed text-sm md:text-base">
-                {feature.description}
-              </p>
-            </div>
+          {features.map((feature, i) => (
+            <FeatureCard key={feature.title} feature={feature} index={i} />
           ))}
         </div>
       </div>
