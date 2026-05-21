@@ -19,13 +19,11 @@ type Category = {
   menu_items: MenuItem[];
 };
 
-function readSlug(): string {
-  try {
-    const match = document.cookie.match(/(?:^|;\s*)restaurant_slug=([^;]+)/);
-    return match ? decodeURIComponent(match[1]) : "le-bonus";
-  } catch {
-    return "le-bonus";
-  }
+async function fetchRestaurantId(): Promise<string> {
+  const res = await fetch("/api/auth/me");
+  if (!res.ok) return "";
+  const data = await res.json();
+  return data.restaurant?.id ?? "";
 }
 
 const EMPTY_FORM = {
@@ -59,12 +57,10 @@ export default function MenuPage() {
 
   useEffect(() => {
     async function init() {
-      const slug = readSlug();
-      const res = await fetch(`/api/restaurants/${slug}`);
-      if (!res.ok) { setLoading(false); return; }
-      const data = await res.json();
-      setRestaurantId(data.id);
-      await reloadMenu(data.id);
+      const id = await fetchRestaurantId();
+      if (!id) { setLoading(false); return; }
+      setRestaurantId(id);
+      await reloadMenu(id);
       setLoading(false);
     }
     init();
@@ -268,7 +264,7 @@ export default function MenuPage() {
               <div className="divide-y divide-slate-50">
                 {cat.menu_items.map((item) => (
                   <div key={item.id}
-                    className="px-4 md:px-6 py-4 flex items-center justify-between gap-4 hover:bg-slate-50 transition-colors">
+                    className="px-4 md:px-6 py-4 flex items-center gap-3 hover:bg-slate-50 transition-colors">
                     {/* Thumbnail */}
                     {item.image_url ? (
                       // eslint-disable-next-line @next/next/no-img-element
@@ -276,48 +272,65 @@ export default function MenuPage() {
                     ) : (
                       <div className="w-12 h-12 rounded-xl bg-slate-100 shrink-0 flex items-center justify-center text-slate-300 text-xl">🍽️</div>
                     )}
+
+                    {/* Nom + badge + description + prix (mobile) */}
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center gap-2 flex-wrap">
                         <span className="font-semibold text-slate-900 text-sm">{item.name}</span>
                         <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${
-                          item.available ? "bg-green-50 text-green-700" : "bg-slate-100 text-green-700"
+                          item.available ? "bg-green-50 text-green-700" : "bg-slate-100 text-slate-400"
                         }`}>
-                          {item.available ? "Disponible" : "Indisponible"}
+                          {item.available ? "Dispo" : "Indispo"}
                         </span>
                       </div>
                       {item.description && (
-                        <p className="text-green-700 text-xs mt-0.5 truncate max-w-sm">{item.description}</p>
+                        <p className="text-slate-400 text-xs mt-0.5 truncate">{item.description}</p>
                       )}
+                      <p className="text-slate-900 font-bold text-sm mt-1">
+                        {item.price.toLocaleString("fr-FR")} FCFA
+                      </p>
                     </div>
 
-                    <div className="flex items-center gap-2 md:gap-3 shrink-0">
-                      <span className="font-bold text-slate-900 text-sm whitespace-nowrap">
-                        {item.price.toLocaleString("fr-FR")} F
-                      </span>
-                      {/* Bouton éditer */}
+                    {/* Actions */}
+                    <div className="flex items-center gap-1.5 shrink-0">
+                      {/* Modifier */}
                       <button
                         onClick={() => openEdit(item, cat.id)}
-                        className="text-xs font-semibold px-3 py-1.5 rounded-lg bg-blue-50 hover:bg-blue-100 text-blue-700 transition-colors"
+                        className="w-9 h-9 flex items-center justify-center rounded-lg bg-blue-50 hover:bg-blue-100 text-blue-700 transition-colors"
                         title="Modifier"
                       >
                         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
                         </svg>
                       </button>
+                      {/* Activer / Désactiver */}
                       <button
                         onClick={() => toggleAvailable(item)}
                         disabled={toggling === item.id}
-                        className={`text-xs font-semibold px-3 py-1.5 rounded-lg transition-colors disabled:opacity-50 ${
+                        title={item.available ? "Désactiver" : "Activer"}
+                        className={`w-9 h-9 flex items-center justify-center rounded-lg transition-colors disabled:opacity-50 ${
                           item.available
-                            ? "bg-slate-100 hover:bg-slate-200 text-slate-700"
-                            : "bg-orange-50 hover:bg-orange-100 text-orange-700"
+                            ? "bg-slate-100 hover:bg-slate-200 text-slate-600"
+                            : "bg-orange-50 hover:bg-orange-100 text-orange-600"
                         }`}
                       >
-                        {toggling === item.id ? "…" : item.available ? "Désactiver" : "Activer"}
+                        {toggling === item.id ? (
+                          <span className="text-xs font-bold">…</span>
+                        ) : item.available ? (
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" />
+                          </svg>
+                        ) : (
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                          </svg>
+                        )}
                       </button>
+                      {/* Supprimer */}
                       <button
                         onClick={() => deleteItem(item.id)}
-                        className="text-green-700 hover:text-red-500 transition-colors p-1"
+                        className="w-9 h-9 flex items-center justify-center rounded-lg text-slate-400 hover:bg-red-50 hover:text-red-500 transition-colors"
                         title="Supprimer"
                       >
                         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
