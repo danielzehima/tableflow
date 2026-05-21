@@ -208,9 +208,9 @@ export default function OnboardingPage() {
             <div className="w-8 h-8 bg-orange-500 rounded-xl flex items-center justify-center shrink-0">
               <span className="text-white font-black text-sm">T</span>
             </div>
-            <span className="font-bold text-slate-900">TableFlow</span>
-            <span className="text-slate-300 mx-1 hidden sm:block">·</span>
-            <span className="text-slate-500 text-sm hidden sm:block">Configuration de votre restaurant</span>
+            <span className="font-bold text-lg text-slate-900">TableFlow</span>
+            <span className="text-slate-300 mx-1">·</span>
+            <span className="text-slate-500 text-sm">Configuration de votre restaurant</span>
           </div>
         </div>
 
