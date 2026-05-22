@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 import { supabase } from "../../../lib/supabase-server";
 import { getSession } from "../../../lib/auth-server";
 
+export const dynamic = "force-dynamic";
+
 export async function GET(req: Request) {
   const session = await getSession();
   if (!session) return NextResponse.json({ error: "Non autorisé" }, { status: 401 });

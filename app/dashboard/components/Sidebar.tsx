@@ -73,6 +73,7 @@ export default function Sidebar({ isOpen = false, onClose, restaurantName, resta
         </div>
 
         <div className="mt-2.5 text-emerald-300 text-xs truncate">{restaurantName}</div>
+        <div className="mt-1.5 text-[10px] text-slate-500">v2.2</div>
       </div>
 
       {/* Navigation */}
