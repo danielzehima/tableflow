@@ -16,6 +16,7 @@ export const metadata: Metadata = {
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
+  themeColor: "#f97316",
 };
 
 export default function RootLayout({
@@ -25,7 +26,23 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="fr" className={geist.variable}>
-      <body className="antialiased">{children}</body>
+      <head>
+        <link rel="manifest" href="/manifest.webmanifest" />
+        <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+        <link rel="icon" type="image/png" sizes="192x192" href="/icon-192.png" />
+        <link rel="icon" type="image/png" sizes="512x512" href="/icon-512.png" />
+        <meta name="apple-mobile-web-app-capable" content="yes" />
+        <meta name="mobile-web-app-capable" content="yes" />
+        <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+        <meta name="apple-mobile-web-app-title" content="TableFlow" />
+        <meta name="application-name" content="TableFlow" />
+      </head>
+      <body className="antialiased">
+        {children}
+        <script dangerouslySetInnerHTML={{
+          __html: `if ('serviceWorker' in navigator) { navigator.serviceWorker.register('/sw.js'); }`
+        }} />
+      </body>
     </html>
   );
 }

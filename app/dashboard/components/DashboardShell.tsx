@@ -3,6 +3,8 @@
 import { useState } from "react";
 import Sidebar from "./Sidebar";
 import OrderNotificationBell from "./OrderNotificationBell";
+import WaiterCallBell from "./WaiterCallBell";
+import InstallPrompt from "./InstallPrompt";
 import type { Role } from "../../lib/auth";
 
 type Props = {
@@ -12,13 +14,15 @@ type Props = {
   restaurantSlug: string;
   userName: string;
   userRole: Role;
+  restaurantPlan?: "free" | "starter" | "pro";
+  planExpiresAt?: string | null;
 };
 
 function getInitials(name: string): string {
   return name.split(" ").map((w) => w[0]).join("").toUpperCase().slice(0, 2);
 }
 
-export default function DashboardShell({ children, restaurantId, restaurantName, restaurantSlug, userName, userRole }: Props) {
+export default function DashboardShell({ children, restaurantId, restaurantName, restaurantSlug, userName, userRole, restaurantPlan = "free", planExpiresAt }: Props) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const initials = getInitials(userName || restaurantName);
 
@@ -32,6 +36,8 @@ export default function DashboardShell({ children, restaurantId, restaurantName,
         userName={userName}
         userRole={userRole}
         initials={initials}
+        restaurantPlan={restaurantPlan}
+        planExpiresAt={planExpiresAt}
       />
 
       {sidebarOpen && (
@@ -55,6 +61,7 @@ export default function DashboardShell({ children, restaurantId, restaurantName,
           </div>
 
           <div className="flex items-center gap-3">
+            <WaiterCallBell restaurantId={restaurantId} />
             <OrderNotificationBell restaurantId={restaurantId} />
             <div className="hidden sm:flex items-center gap-2 text-right">
               <div>
@@ -72,6 +79,7 @@ export default function DashboardShell({ children, restaurantId, restaurantName,
 
         <main className="p-4 md:p-8">{children}</main>
       </div>
+      <InstallPrompt />
     </div>
   );
 }
