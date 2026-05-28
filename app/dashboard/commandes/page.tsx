@@ -879,7 +879,7 @@ export default function CommandesPage() {
 
             {/* Boîte */}
             <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4">
-              <div className="bg-white rounded-2xl w-full max-w-sm shadow-2xl overflow-hidden">
+              <div className="bg-white rounded-2xl w-full max-w-sm shadow-2xl overflow-y-auto max-h-[92vh]">
 
                 {/* En-tête */}
                 <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100">
@@ -1006,7 +1006,7 @@ export default function CommandesPage() {
 
           {/* Boîte */}
           <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4">
-            <div className="bg-white rounded-2xl w-full max-w-sm shadow-2xl overflow-hidden">
+            <div className="bg-white rounded-2xl w-full max-w-sm shadow-2xl overflow-y-auto max-h-[92vh]">
 
               {/* En-tête */}
               <div className="px-6 py-5 text-center border-b border-slate-100">

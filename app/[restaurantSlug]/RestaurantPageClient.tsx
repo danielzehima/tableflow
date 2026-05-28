@@ -643,137 +643,149 @@ function CartDrawer({
         </div>
 
         {!success && cart.length > 0 && (
-          <div className="px-5 py-5 border-t border-slate-100 space-y-4 bg-white">
-            {error && (
-              <div className="text-red-600 text-xs bg-red-50 border border-red-100 rounded-xl px-3 py-2">
-                {error}
-              </div>
-            )}
+          /* ── Footer panier : zone scrollable + bouton toujours visible ── */
+          <div className="border-t border-slate-100 bg-white flex flex-col shrink-0" style={{ maxHeight: "62vh" }}>
 
-            {/* Code promo */}
-            <div className="space-y-1.5">
-              {promoApplied ? (
-                <div className="flex items-center justify-between bg-emerald-50 border border-emerald-200 rounded-xl px-3 py-2.5">
-                  <div className="flex items-center gap-2">
-                    <span className="text-emerald-500 font-bold">✓</span>
-                    <span className="font-mono font-bold text-emerald-700 text-xs tracking-wide">
-                      {promoApplied.code}
+            {/* ── Zone scrollable : récap + formulaire ── */}
+            <div className="flex-1 overflow-y-auto px-5 pt-4 pb-2 space-y-4 min-h-0">
+              {error && (
+                <div className="text-red-600 text-xs bg-red-50 border border-red-100 rounded-xl px-3 py-2">
+                  {error}
+                </div>
+              )}
+
+              {/* Code promo */}
+              <div className="space-y-1.5">
+                {promoApplied ? (
+                  <div className="flex items-center justify-between bg-emerald-50 border border-emerald-200 rounded-xl px-3 py-2.5">
+                    <div className="flex items-center gap-2">
+                      <span className="text-emerald-500 font-bold">✓</span>
+                      <span className="font-mono font-bold text-emerald-700 text-xs tracking-wide">
+                        {promoApplied.code}
+                      </span>
+                      <span className="text-emerald-600 text-xs font-semibold">
+                        −{promoApplied.discount_amount.toLocaleString("fr-FR")} FCFA
+                      </span>
+                    </div>
+                    <button
+                      onClick={() => { setPromoApplied(null); setPromoInput(""); setPromoError(""); }}
+                      className="text-slate-400 hover:text-red-500 text-sm font-bold leading-none transition-colors"
+                    >
+                      ✕
+                    </button>
+                  </div>
+                ) : (
+                  <div className="flex gap-2">
+                    <input
+                      value={promoInput}
+                      onChange={(e) => { setPromoInput(e.target.value.toUpperCase()); setPromoError(""); }}
+                      onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); applyPromo(); } }}
+                      placeholder="Code promo"
+                      className="flex-1 border border-slate-200 rounded-xl px-3 py-2.5 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-orange-400 placeholder-slate-400 uppercase"
+                    />
+                    <button
+                      onClick={applyPromo}
+                      disabled={!promoInput.trim() || promoLoading}
+                      className="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold text-xs rounded-xl transition-colors disabled:opacity-50 whitespace-nowrap"
+                    >
+                      {promoLoading ? "…" : "Appliquer"}
+                    </button>
+                  </div>
+                )}
+                {promoError && (
+                  <p className="text-red-500 text-xs px-1">{promoError}</p>
+                )}
+              </div>
+
+              {/* Total */}
+              <div className="space-y-1">
+                {(offPeakDiscount > 0 || promoApplied) && (
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-slate-400">Sous-total</span>
+                    <span className="text-slate-400 line-through">{rawTotal.toLocaleString("fr-FR")} FCFA</span>
+                  </div>
+                )}
+                {offPeakDiscount > 0 && (
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-orange-600 font-semibold">🔥 Heures creuses −{offPeakDiscount}%</span>
+                    <span className="text-orange-600 font-semibold">
+                      −{offPeakSaving.toLocaleString("fr-FR")} FCFA
                     </span>
-                    <span className="text-emerald-600 text-xs font-semibold">
+                  </div>
+                )}
+                {promoApplied && (
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-emerald-600 font-semibold">Code {promoApplied.code}</span>
+                    <span className="text-emerald-600 font-semibold">
                       −{promoApplied.discount_amount.toLocaleString("fr-FR")} FCFA
                     </span>
                   </div>
-                  <button
-                    onClick={() => { setPromoApplied(null); setPromoInput(""); setPromoError(""); }}
-                    className="text-slate-400 hover:text-red-500 text-sm font-bold leading-none transition-colors"
-                  >
-                    ✕
-                  </button>
-                </div>
-              ) : (
-                <div className="flex gap-2">
-                  <input
-                    value={promoInput}
-                    onChange={(e) => { setPromoInput(e.target.value.toUpperCase()); setPromoError(""); }}
-                    onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); applyPromo(); } }}
-                    placeholder="Code promo"
-                    className="flex-1 border border-slate-200 rounded-xl px-3 py-2.5 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-orange-400 placeholder-slate-400 uppercase"
-                  />
-                  <button
-                    onClick={applyPromo}
-                    disabled={!promoInput.trim() || promoLoading}
-                    className="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold text-xs rounded-xl transition-colors disabled:opacity-50 whitespace-nowrap"
-                  >
-                    {promoLoading ? "…" : "Appliquer"}
-                  </button>
-                </div>
-              )}
-              {promoError && (
-                <p className="text-red-500 text-xs px-1">{promoError}</p>
-              )}
-            </div>
-
-            {/* Total */}
-            <div className="space-y-1">
-              {/* Sous-total visible dès qu'une réduction s'applique */}
-              {(offPeakDiscount > 0 || promoApplied) && (
-                <div className="flex items-center justify-between text-sm">
-                  <span className="text-slate-400">Sous-total</span>
-                  <span className="text-slate-400 line-through">{rawTotal.toLocaleString("fr-FR")} FCFA</span>
-                </div>
-              )}
-              {/* Ligne heures creuses */}
-              {offPeakDiscount > 0 && (
-                <div className="flex items-center justify-between text-sm">
-                  <span className="text-orange-600 font-semibold">🔥 Heures creuses −{offPeakDiscount}%</span>
-                  <span className="text-orange-600 font-semibold">
-                    −{offPeakSaving.toLocaleString("fr-FR")} FCFA
+                )}
+                <div className="flex items-center justify-between pt-1 border-t border-slate-100">
+                  <span className="text-slate-500 text-sm">{t.totalLabel}</span>
+                  <span className="font-extrabold text-slate-900 text-xl">
+                    {finalTotal.toLocaleString("fr-FR")}{" "}
+                    <span className="text-sm font-medium text-slate-500">FCFA</span>
                   </span>
                 </div>
-              )}
-              {/* Ligne code promo */}
-              {promoApplied && (
-                <div className="flex items-center justify-between text-sm">
-                  <span className="text-emerald-600 font-semibold">Code {promoApplied.code}</span>
-                  <span className="text-emerald-600 font-semibold">
-                    −{promoApplied.discount_amount.toLocaleString("fr-FR")} FCFA
-                  </span>
-                </div>
-              )}
-              <div className="flex items-center justify-between pt-1 border-t border-slate-100">
-                <span className="text-slate-500 text-sm">{t.totalLabel}</span>
-                <span className="font-extrabold text-slate-900 text-xl">
-                  {finalTotal.toLocaleString("fr-FR")}{" "}
-                  <span className="text-sm font-medium text-slate-500">FCFA</span>
-                </span>
               </div>
-            </div>
-            <div>
-              <label className="block text-sm font-semibold text-slate-700 mb-1.5">
-                {t.tableLabel}
-              </label>
-              {initialTable ? (
-                <div className="flex items-center gap-2 bg-orange-50 border border-orange-200 rounded-xl px-4 py-3">
-                  <span className="text-orange-600 font-extrabold text-sm flex-1">{tableNumber}</span>
-                  <span className="text-orange-400 text-xs">{t.tableViaQr}</span>
-                </div>
-              ) : (
+
+              {/* Table */}
+              <div>
+                <label className="block text-sm font-semibold text-slate-700 mb-1.5">
+                  {t.tableLabel}
+                </label>
+                {initialTable ? (
+                  <div className="flex items-center gap-2 bg-orange-50 border border-orange-200 rounded-xl px-4 py-3">
+                    <span className="text-orange-600 font-extrabold text-sm flex-1">{tableNumber}</span>
+                    <span className="text-orange-400 text-xs">{t.tableViaQr}</span>
+                  </div>
+                ) : (
+                  <input
+                    type="text"
+                    value={tableNumber}
+                    onChange={(e) => { setTableNumber(e.target.value); setError(null); }}
+                    placeholder={t.tablePlaceholder}
+                    className="w-full border border-slate-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400 transition"
+                  />
+                )}
+              </div>
+
+              {/* Nom + Téléphone */}
+              <div className="grid grid-cols-2 gap-2">
                 <input
                   type="text"
-                  value={tableNumber}
-                  onChange={(e) => { setTableNumber(e.target.value); setError(null); }}
-                  placeholder={t.tablePlaceholder}
-                  className="w-full border border-slate-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400 transition"
+                  value={customerName}
+                  onChange={(e) => setCustomerName(e.target.value)}
+                  placeholder={t.firstnamePlaceholder}
+                  className="border border-slate-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400 transition"
                 />
-              )}
-            </div>
-            <div className="grid grid-cols-2 gap-2">
+                <input
+                  type="tel"
+                  value={customerPhone}
+                  onChange={(e) => setCustomerPhone(e.target.value)}
+                  placeholder={t.phonePlaceholder}
+                  className="border border-slate-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400 transition"
+                />
+              </div>
+
+              {/* Email */}
               <input
-                type="text"
-                value={customerName}
-                onChange={(e) => setCustomerName(e.target.value)}
-                placeholder={t.firstnamePlaceholder}
-                className="border border-slate-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400 transition"
+                type="email"
+                value={customerEmail}
+                onChange={(e) => setCustomerEmail(e.target.value)}
+                placeholder={t.emailOrderPlaceholder}
+                className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400 transition"
               />
-              <input
-                type="tel"
-                value={customerPhone}
-                onChange={(e) => setCustomerPhone(e.target.value)}
-                placeholder={t.phonePlaceholder}
-                className="border border-slate-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400 transition"
-              />
+              <p className="text-xs text-slate-400 -mt-2">{t.optionalHint}</p>
             </div>
-            <input
-              type="email"
-              value={customerEmail}
-              onChange={(e) => setCustomerEmail(e.target.value)}
-              placeholder={t.emailOrderPlaceholder}
-              className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400 transition"
-            />
-            <p className="text-xs text-slate-400 -mt-2">{t.optionalHint}</p>
-            <PrimaryBtn className="w-full py-4 text-sm disabled:opacity-60" onClick={handleOrder} disabled={loading}>
-              {loading ? t.orderLoading : `${t.tabMenu} · ${finalTotal.toLocaleString("fr-FR")} FCFA`}
-            </PrimaryBtn>
+
+            {/* ── Bouton commander — toujours visible en bas ── */}
+            <div className="px-5 py-4 shrink-0 border-t border-slate-50 bg-white">
+              <PrimaryBtn className="w-full py-4 text-sm disabled:opacity-60" onClick={handleOrder} disabled={loading}>
+                {loading ? t.orderLoading : `${t.tabMenu} · ${finalTotal.toLocaleString("fr-FR")} FCFA`}
+              </PrimaryBtn>
+            </div>
           </div>
         )}
       </div>
