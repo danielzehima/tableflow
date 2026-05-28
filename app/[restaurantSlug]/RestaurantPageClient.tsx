@@ -344,9 +344,16 @@ function CartDrawer({
   const [promoLoading, setPromoLoading] = useState(false);
   const [promoError, setPromoError] = useState("");
 
-  const total = cart.reduce((s, c) => s + c.item.price * c.quantity, 0);
-  const discount = promoApplied?.discount_amount ?? 0;
-  const finalTotal = Math.max(0, total - discount);
+  // Réduction heures creuses active (contexte partagé avec PriceDisplay)
+  const offPeakDiscount = useContext(OffPeakDiscountCtx);
+  const discountedPrice = (price: number) =>
+    offPeakDiscount > 0 ? Math.round(price * (1 - offPeakDiscount / 100)) : price;
+
+  const rawTotal      = cart.reduce((s, c) => s + c.item.price * c.quantity, 0);
+  const offPeakSaving = rawTotal - cart.reduce((s, c) => s + discountedPrice(c.item.price) * c.quantity, 0);
+  const totalAfterOffPeak = rawTotal - offPeakSaving;           // prix réduits appliqués
+  const promoDeduction    = promoApplied?.discount_amount ?? 0;
+  const finalTotal = Math.max(0, totalAfterOffPeak - promoDeduction);
   const itemsText = cart.map((c) => `${c.quantity}x ${c.item.name}`).join(", ");
 
   async function applyPromo() {
@@ -357,7 +364,7 @@ function CartDrawer({
       const res = await fetch("/api/promo-codes/validate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ restaurant_id: restaurantId, code: promoInput.trim(), total }),
+        body: JSON.stringify({ restaurant_id: restaurantId, code: promoInput.trim(), total: totalAfterOffPeak }),
       });
       const data = await res.json();
       if (data.valid) {
@@ -600,8 +607,21 @@ function CartDrawer({
                 <div key={item.id} className="flex items-center gap-3 p-3 bg-slate-50 rounded-xl">
                   <div className="flex-1 min-w-0">
                     <div className="font-semibold text-slate-900 text-sm truncate">{item.name}</div>
-                    <div className="text-orange-600 text-xs font-bold mt-0.5">
-                      {(item.price * quantity).toLocaleString("fr-FR")} FCFA
+                    <div className="text-xs font-bold mt-0.5">
+                      {offPeakDiscount > 0 ? (
+                        <span className="flex items-center gap-1.5 flex-wrap">
+                          <span className="line-through text-slate-300">
+                            {(item.price * quantity).toLocaleString("fr-FR")}
+                          </span>
+                          <span className="text-orange-600">
+                            {(discountedPrice(item.price) * quantity).toLocaleString("fr-FR")} FCFA
+                          </span>
+                        </span>
+                      ) : (
+                        <span className="text-orange-600">
+                          {(item.price * quantity).toLocaleString("fr-FR")} FCFA
+                        </span>
+                      )}
                     </div>
                   </div>
                   <div className="flex items-center gap-2 shrink-0">
@@ -675,12 +695,23 @@ function CartDrawer({
 
             {/* Total */}
             <div className="space-y-1">
-              {promoApplied && (
+              {/* Sous-total visible dès qu'une réduction s'applique */}
+              {(offPeakDiscount > 0 || promoApplied) && (
                 <div className="flex items-center justify-between text-sm">
                   <span className="text-slate-400">Sous-total</span>
-                  <span className="text-slate-400">{total.toLocaleString("fr-FR")} FCFA</span>
+                  <span className="text-slate-400 line-through">{rawTotal.toLocaleString("fr-FR")} FCFA</span>
                 </div>
               )}
+              {/* Ligne heures creuses */}
+              {offPeakDiscount > 0 && (
+                <div className="flex items-center justify-between text-sm">
+                  <span className="text-orange-600 font-semibold">🔥 Heures creuses −{offPeakDiscount}%</span>
+                  <span className="text-orange-600 font-semibold">
+                    −{offPeakSaving.toLocaleString("fr-FR")} FCFA
+                  </span>
+                </div>
+              )}
+              {/* Ligne code promo */}
               {promoApplied && (
                 <div className="flex items-center justify-between text-sm">
                   <span className="text-emerald-600 font-semibold">Code {promoApplied.code}</span>
@@ -689,7 +720,7 @@ function CartDrawer({
                   </span>
                 </div>
               )}
-              <div className="flex items-center justify-between">
+              <div className="flex items-center justify-between pt-1 border-t border-slate-100">
                 <span className="text-slate-500 text-sm">{t.totalLabel}</span>
                 <span className="font-extrabold text-slate-900 text-xl">
                   {finalTotal.toLocaleString("fr-FR")}{" "}
@@ -1541,7 +1572,10 @@ export default function RestaurantPageClient({
   }
 
   const cartCount = cart.reduce((s, c) => s + c.quantity, 0);
-  const cartTotal = cart.reduce((s, c) => s + c.item.price * c.quantity, 0);
+  // Applique la réduction heures creuses si active
+  const cartTotal = offPeakActive
+    ? cart.reduce((s, c) => s + Math.round(c.item.price * (1 - offPeakActive.slot.discount_percent / 100)) * c.quantity, 0)
+    : cart.reduce((s, c) => s + c.item.price * c.quantity, 0);
 
   const tabs: { key: Tab; emoji: string; label: string }[] = [
     { key: "menu", emoji: "🍽️", label: t.tabMenu },
