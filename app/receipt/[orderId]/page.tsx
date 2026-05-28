@@ -59,6 +59,26 @@ export default async function ReceiptPage({ params }: { params: Promise<{ orderI
   const items = parseItems(order.items as string);
   const isPaid = order.status === "paid" || !!payment;
 
+  // Récupère les prix du menu pour afficher le montant par ligne
+  const { data: menuItems } = await supabase
+    .from("menu_items")
+    .select("name, price")
+    .eq("restaurant_id", order.restaurant_id);
+
+  const priceMap = new Map<string, number>();
+  (menuItems ?? []).forEach((mi: { name: string; price: number }) =>
+    priceMap.set(mi.name.toLowerCase().trim(), mi.price)
+  );
+
+  const itemsWithPrices = items.map((item) => {
+    const unitPrice = priceMap.get(item.name.toLowerCase().trim()) ?? null;
+    return {
+      ...item,
+      unitPrice,
+      lineTotal: unitPrice != null ? unitPrice * item.quantity : null,
+    };
+  });
+
   return (
     <>
       <style>{`
@@ -123,10 +143,27 @@ export default async function ReceiptPage({ params }: { params: Promise<{ orderI
 
           {/* Articles */}
           <div className="px-6 py-5 border-b border-dashed border-slate-200 space-y-2">
-            <p className="text-xs font-bold text-slate-400 uppercase tracking-wide mb-3">Articles</p>
-            {items.map((item, i) => (
-              <div key={i} className="flex justify-between text-sm">
-                <span className="text-slate-700">{item.quantity}x {item.name}</span>
+            <div className="flex justify-between items-center mb-3">
+              <p className="text-xs font-bold text-slate-400 uppercase tracking-wide">Articles</p>
+              <p className="text-xs font-bold text-slate-400 uppercase tracking-wide">Montant</p>
+            </div>
+            {itemsWithPrices.map((item, i) => (
+              <div key={i} className="flex justify-between items-start text-sm gap-2">
+                <div className="flex-1 min-w-0">
+                  <span className="text-slate-700">
+                    {item.quantity}x {item.name}
+                  </span>
+                  {item.unitPrice != null && (
+                    <span className="text-slate-400 text-xs ml-1.5">
+                      ({item.unitPrice.toLocaleString("fr-FR")} × {item.quantity})
+                    </span>
+                  )}
+                </div>
+                <span className="font-semibold text-slate-800 whitespace-nowrap shrink-0">
+                  {item.lineTotal != null
+                    ? `${item.lineTotal.toLocaleString("fr-FR")} FCFA`
+                    : "—"}
+                </span>
               </div>
             ))}
           </div>
@@ -135,8 +172,8 @@ export default async function ReceiptPage({ params }: { params: Promise<{ orderI
           <div className="px-6 py-5 border-b border-dashed border-slate-200">
             <div className="flex justify-between items-center">
               <span className="font-extrabold text-slate-900 text-base">TOTAL</span>
-              <span className="font-extrabold text-slate-900 text-xl">
-                {Number(order.total).toLocaleString("fr-FR")} <span className="text-sm font-medium text-slate-500">FCFA</span>
+              <span className="font-extrabold text-orange-600 text-xl">
+                {Number(order.total).toLocaleString("fr-FR")} <span className="text-sm font-semibold text-slate-500">FCFA</span>
               </span>
             </div>
           </div>
