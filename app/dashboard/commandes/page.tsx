@@ -86,6 +86,20 @@ export default function CommandesPage() {
   const [view, setView] = useState<"active" | "historique">("active");
   const [historySearch, setHistorySearch] = useState("");
 
+  // ── Encaissement espèces ──────────────────────────────────────────────────
+  // Modal 1 : saisie de la somme reçue
+  const [cashOrder, setCashOrder] = useState<Order | null>(null);
+  const [amountReceived, setAmountReceived] = useState<string>("");
+  const [cashSaving, setCashSaving] = useState(false);
+  // Modal 2 : choix d'impression (données conservées pour les fonctions d'impression)
+  const [showPrintModal, setShowPrintModal] = useState(false);
+  const [lastCashData, setLastCashData] = useState<{
+    order: Order;
+    received: number;
+    change: number;
+  } | null>(null);
+  // ─────────────────────────────────────────────────────────────────────────
+
   // Nouvelle commande
   const [showNewOrder, setShowNewOrder] = useState(false);
   const [orderForm, setOrderForm] = useState({ ...EMPTY_ORDER });
@@ -224,6 +238,37 @@ export default function CommandesPage() {
       setUpdating(null);
     }
   }
+
+  // ── Valide l'encaissement espèces ────────────────────────────────────────
+  async function confirmCashPayment() {
+    if (!cashOrder) return;
+    const received = parseFloat(amountReceived) || 0;
+    const total = Number(cashOrder.total);
+    if (received < total) return; // sécurité (le bouton est disabled, mais au cas où)
+
+    setCashSaving(true);
+
+    // TODO: appel API — mettre la commande en statut "paid" dans Supabase
+    const res = await fetch(`/api/orders/${cashOrder.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ status: "paid" }),
+    });
+
+    if (res.ok) {
+      // Conserver les données pour les fonctions d'impression
+      setLastCashData({ order: cashOrder, received, change: received - total });
+
+      // Fermer Modal 1, ouvrir Modal 2, recharger la liste
+      setCashOrder(null);
+      setAmountReceived("");
+      setShowPrintModal(true);
+      if (restaurantId) await loadOrders(restaurantId);
+    }
+
+    setCashSaving(false);
+  }
+  // ─────────────────────────────────────────────────────────────────────────
 
   function addToCart(item: MenuItem) {
     setCartItems(prev => {
@@ -775,7 +820,17 @@ export default function CommandesPage() {
                       <td className="px-4 md:px-6 py-4">
                         <div className="flex items-center gap-1.5">
                           {next && (
-                            <button onClick={() => advance(order.id, next.status)} disabled={updating === order.id}
+                            <button
+                              onClick={() => {
+                                if (order.status === "served") {
+                                  // Ouvre le Modal 1 d'encaissement espèces au lieu d'avancer directement
+                                  setCashOrder(order);
+                                  setAmountReceived("");
+                                } else {
+                                  advance(order.id, next.status);
+                                }
+                              }}
+                              disabled={updating === order.id}
                               className="text-xs font-semibold px-3 py-1.5 rounded-lg bg-orange-50 hover:bg-orange-100 text-orange-700 transition-colors disabled:opacity-50 whitespace-nowrap">
                               {updating === order.id ? "…" : next.label}
                             </button>
@@ -807,6 +862,241 @@ export default function CommandesPage() {
           </div>
         )}
       </div>
+      {/* ── MODAL 1 : Encaissement espèces ───────────────────────────────── */}
+      {cashOrder && (() => {
+        const total = Number(cashOrder.total);
+        const received = parseFloat(amountReceived) || 0;
+        const change = received - total;
+        const canValidate = received >= total;
+
+        return (
+          <>
+            {/* Overlay */}
+            <div
+              className="fixed inset-0 bg-black/50 z-50 backdrop-blur-sm"
+              onClick={() => { if (!cashSaving) { setCashOrder(null); setAmountReceived(""); } }}
+            />
+
+            {/* Boîte */}
+            <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4">
+              <div className="bg-white rounded-2xl w-full max-w-sm shadow-2xl overflow-hidden">
+
+                {/* En-tête */}
+                <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100">
+                  <div className="flex items-center gap-2">
+                    <span className="text-xl">💵</span>
+                    <h2 className="font-bold text-slate-900">Encaissement espèces</h2>
+                  </div>
+                  <button
+                    onClick={() => { if (!cashSaving) { setCashOrder(null); setAmountReceived(""); } }}
+                    className="p-1.5 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-lg transition-colors"
+                    aria-label="Fermer"
+                  >
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
+                </div>
+
+                <div className="px-6 py-5 space-y-5">
+                  {/* Table + articles en résumé */}
+                  <div className="bg-slate-50 rounded-xl px-4 py-3 text-sm text-slate-600 space-y-1">
+                    <div className="flex justify-between">
+                      <span className="font-medium text-slate-500">Table</span>
+                      <span className="font-bold text-slate-800">{cashOrder.table_number}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="font-medium text-slate-500">Articles</span>
+                      <span className="text-right text-slate-700 max-w-[180px] truncate">{cashOrder.items}</span>
+                    </div>
+                  </div>
+
+                  {/* Total (lecture seule) */}
+                  <div className="flex items-center justify-between px-4 py-3 bg-orange-50 border border-orange-100 rounded-xl">
+                    <span className="text-sm font-semibold text-orange-700">Total à payer</span>
+                    <span className="text-2xl font-extrabold text-orange-600">
+                      {total.toLocaleString("fr-FR")} <span className="text-base font-bold">F</span>
+                    </span>
+                  </div>
+
+                  {/* Somme reçue */}
+                  <div>
+                    <label className="block text-sm font-semibold text-slate-700 mb-1.5">
+                      Somme reçue du client <span className="text-red-400">*</span>
+                    </label>
+                    <div className="relative">
+                      <input
+                        type="number"
+                        min={0}
+                        step={1}
+                        autoFocus
+                        value={amountReceived}
+                        onChange={(e) => setAmountReceived(e.target.value)}
+                        placeholder={`Minimum ${total.toLocaleString("fr-FR")}`}
+                        className={`w-full border rounded-xl px-4 py-3 text-lg font-bold pr-12 focus:outline-none focus:ring-2 transition-colors ${
+                          amountReceived && !canValidate
+                            ? "border-red-300 focus:ring-red-400 bg-red-50 text-red-700"
+                            : canValidate
+                            ? "border-emerald-300 focus:ring-emerald-400 bg-emerald-50 text-emerald-800"
+                            : "border-slate-200 focus:ring-orange-400"
+                        }`}
+                      />
+                      <span className="absolute right-4 top-1/2 -translate-y-1/2 text-sm font-bold text-slate-400">F</span>
+                    </div>
+                    {amountReceived && !canValidate && (
+                      <p className="text-xs text-red-500 mt-1.5 flex items-center gap-1">
+                        <span>⚠️</span> Montant insuffisant ({(total - received).toLocaleString("fr-FR")} F manquants)
+                      </p>
+                    )}
+                  </div>
+
+                  {/* Monnaie à rendre — calcul dynamique */}
+                  <div className={`flex items-center justify-between px-4 py-3 rounded-xl border transition-all ${
+                    canValidate && change > 0
+                      ? "bg-emerald-50 border-emerald-200"
+                      : canValidate && change === 0
+                      ? "bg-slate-50 border-slate-200"
+                      : "bg-slate-50 border-slate-100 opacity-40"
+                  }`}>
+                    <span className="text-sm font-semibold text-slate-600">Monnaie à rendre</span>
+                    <span className={`text-2xl font-extrabold ${
+                      canValidate && change > 0 ? "text-emerald-600" : "text-slate-400"
+                    }`}>
+                      {canValidate ? change.toLocaleString("fr-FR") : "—"} <span className="text-base font-bold">F</span>
+                    </span>
+                  </div>
+                </div>
+
+                {/* Boutons */}
+                <div className="px-6 pb-6 flex gap-3">
+                  <button
+                    onClick={() => { setCashOrder(null); setAmountReceived(""); }}
+                    disabled={cashSaving}
+                    className="flex-1 border border-slate-200 text-slate-700 font-semibold py-3 rounded-xl hover:bg-slate-50 text-sm transition-colors disabled:opacity-50"
+                  >
+                    Annuler
+                  </button>
+                  <button
+                    onClick={confirmCashPayment}
+                    disabled={!canValidate || cashSaving}
+                    className="flex-1 bg-orange-500 hover:bg-orange-600 disabled:opacity-40 disabled:cursor-not-allowed text-white font-bold py-3 rounded-xl text-sm transition-colors"
+                  >
+                    {cashSaving ? (
+                      <span className="flex items-center justify-center gap-2">
+                        <svg className="w-4 h-4 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 12a8 8 0 018-8v8H4z" />
+                        </svg>
+                        Enregistrement…
+                      </span>
+                    ) : "Valider l'encaissement"}
+                  </button>
+                </div>
+              </div>
+            </div>
+          </>
+        );
+      })()}
+      {/* ── FIN MODAL 1 ───────────────────────────────────────────────────── */}
+
+      {/* ── MODAL 2 : Choix d'impression ─────────────────────────────────── */}
+      {showPrintModal && lastCashData && (
+        <>
+          {/* Overlay */}
+          <div className="fixed inset-0 bg-black/50 z-50 backdrop-blur-sm" onClick={() => setShowPrintModal(false)} />
+
+          {/* Boîte */}
+          <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4">
+            <div className="bg-white rounded-2xl w-full max-w-sm shadow-2xl overflow-hidden">
+
+              {/* En-tête */}
+              <div className="px-6 py-5 text-center border-b border-slate-100">
+                <div className="w-12 h-12 mx-auto mb-3 bg-emerald-100 rounded-full flex items-center justify-center">
+                  <svg className="w-6 h-6 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                  </svg>
+                </div>
+                <h2 className="text-lg font-bold text-slate-900">Paiement enregistré !</h2>
+                <p className="text-sm text-slate-500 mt-1">
+                  Table {lastCashData.order.table_number} · {Number(lastCashData.order.total).toLocaleString("fr-FR")} F
+                </p>
+              </div>
+
+              {/* Récapitulatif rapide */}
+              <div className="px-6 py-4 space-y-2 bg-slate-50 border-b border-slate-100">
+                <div className="flex justify-between text-sm">
+                  <span className="text-slate-500">Somme reçue</span>
+                  <span className="font-semibold text-slate-800">{lastCashData.received.toLocaleString("fr-FR")} F</span>
+                </div>
+                <div className="flex justify-between text-sm">
+                  <span className="text-slate-500">Monnaie rendue</span>
+                  <span className={`font-bold ${lastCashData.change > 0 ? "text-emerald-600" : "text-slate-500"}`}>
+                    {lastCashData.change.toLocaleString("fr-FR")} F
+                  </span>
+                </div>
+              </div>
+
+              {/* Question */}
+              <div className="px-6 pt-5 pb-2">
+                <p className="text-sm font-semibold text-slate-700 text-center mb-4">Que souhaitez-vous imprimer ?</p>
+
+                <div className="space-y-2.5">
+                  {/* Bouton Reçu */}
+                  <button
+                    onClick={() => {
+                      // TODO: appeler la fonction d'impression du reçu
+                      // Données disponibles : lastCashData.order, lastCashData.received, lastCashData.change
+                      // Exemple : printReceipt(lastCashData);
+                      window.open(`/receipt/${lastCashData.order.id}`, "_blank");
+                    }}
+                    className="w-full flex items-center gap-3 px-4 py-3.5 bg-orange-50 hover:bg-orange-100 border border-orange-200 hover:border-orange-300 rounded-xl transition-colors group"
+                  >
+                    <span className="text-2xl">🧾</span>
+                    <div className="text-left flex-1">
+                      <div className="font-bold text-orange-700 text-sm">Imprimer le reçu</div>
+                      <div className="text-xs text-orange-500">Reçu client simplifié</div>
+                    </div>
+                    <svg className="w-4 h-4 text-orange-400 group-hover:text-orange-600 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
+                    </svg>
+                  </button>
+
+                  {/* Bouton Facture */}
+                  <button
+                    onClick={() => {
+                      // TODO: appeler la fonction de génération et d'impression de la facture
+                      // Données disponibles : lastCashData.order, lastCashData.received, lastCashData.change
+                      // Exemple : printInvoice(lastCashData);
+                      window.open(`/receipt/${lastCashData.order.id}?type=invoice`, "_blank");
+                    }}
+                    className="w-full flex items-center gap-3 px-4 py-3.5 bg-blue-50 hover:bg-blue-100 border border-blue-200 hover:border-blue-300 rounded-xl transition-colors group"
+                  >
+                    <span className="text-2xl">📄</span>
+                    <div className="text-left flex-1">
+                      <div className="font-bold text-blue-700 text-sm">Imprimer la facture</div>
+                      <div className="text-xs text-blue-500">Facture officielle détaillée</div>
+                    </div>
+                    <svg className="w-4 h-4 text-blue-400 group-hover:text-blue-600 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
+                    </svg>
+                  </button>
+                </div>
+              </div>
+
+              {/* Bouton Fermer */}
+              <div className="px-6 py-5">
+                <button
+                  onClick={() => setShowPrintModal(false)}
+                  className="w-full border border-slate-200 text-slate-600 font-semibold py-3 rounded-xl hover:bg-slate-50 text-sm transition-colors"
+                >
+                  Fermer
+                </button>
+              </div>
+            </div>
+          </div>
+        </>
+      )}
+      {/* ── FIN MODAL 2 ───────────────────────────────────────────────────── */}
+
     </div>
   );
 }
