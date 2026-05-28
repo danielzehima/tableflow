@@ -3,6 +3,9 @@ import { cookies } from "next/headers";
 import { revalidatePath } from "next/cache";
 import { supabase } from "../../../../lib/supabase-server";
 
+export const dynamic = "force-dynamic";
+export const runtime = "nodejs";
+
 async function checkAdmin() {
   const jar = await cookies();
   const token = jar.get("admin_token")?.value;
