@@ -24,8 +24,8 @@ function elapsed(created_at: string) {
 
 function urgencyColor(created_at: string) {
   const diff = Math.floor((Date.now() - new Date(created_at).getTime()) / 60000);
-  if (diff >= 20) return "border-red-500 bg-red-500/5";
-  if (diff >= 10) return "border-orange-500 bg-orange-500/5";
+  if (diff >= 20) return "border-red-500 bg-red-900/50";
+  if (diff >= 10) return "border-orange-500 bg-orange-900/50";
   return "border-slate-700 bg-slate-800/60";
 }
 
@@ -272,8 +272,8 @@ export default function CuisinePage() {
       <div className="flex items-center gap-4 text-xs text-slate-200 pt-2">
         <span className="font-semibold">Urgence :</span>
         <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded border border-slate-600 bg-slate-800/60 inline-block" /> Normal</span>
-        <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded border border-orange-500 bg-orange-500/10 inline-block" /> +10 min</span>
-        <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded border border-red-500 bg-red-500/10 inline-block" /> +20 min</span>
+        <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded border border-orange-500 bg-orange-900/50 inline-block" /> +10 min</span>
+        <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded border border-red-500 bg-red-900/50 inline-block" /> +20 min</span>
       </div>
     </div>
   );

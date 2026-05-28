@@ -20,7 +20,10 @@ export default function LoginPage() {
       body: JSON.stringify(form),
     });
     if (res.ok) {
-      router.push("/dashboard");
+      const data = await res.json();
+      if (data.role === "waiter")  router.push("/dashboard/reservations");
+      else if (data.role === "cashier") router.push("/dashboard/commandes");
+      else router.push("/dashboard");
     } else {
       const data = await res.json();
       setError(data.error ?? "Email ou mot de passe incorrect");
@@ -40,11 +43,10 @@ export default function LoginPage() {
 
         {/* Logo */}
         <div className="text-center mb-10">
-          <a href="/" className="inline-flex items-center gap-2.5 mb-5">
-            <div className="w-11 h-11 bg-orange-500 rounded-2xl flex items-center justify-center shadow-lg shadow-orange-500/30">
-              <span className="text-white font-black text-xl">T</span>
+          <a href="/" className="inline-flex mb-5">
+            <div className="bg-white rounded-2xl p-2 shadow-lg shadow-black/30">
+              <img src="/logo.png" alt="TableFlow" className="h-14 w-auto" />
             </div>
-            <span className="text-white font-black text-2xl tracking-tight">TableFlow</span>
           </a>
           <h1 className="text-white font-bold text-xl">Connectez-vous à votre espace</h1>
           <p className="text-slate-500 text-sm mt-1">Gérez votre restaurant en toute simplicité</p>

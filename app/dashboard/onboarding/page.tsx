@@ -205,10 +205,7 @@ export default function OnboardingPage() {
         {/* Header */}
         <div className="bg-white border-b border-slate-100 px-4 py-3 sm:px-6 sm:py-4 sticky top-0 z-10">
           <div className="max-w-xl mx-auto flex items-center gap-2.5">
-            <div className="w-8 h-8 bg-orange-500 rounded-xl flex items-center justify-center shrink-0">
-              <span className="text-white font-black text-sm">T</span>
-            </div>
-            <span className="font-bold text-lg text-slate-900">TableFlow</span>
+            <img src="/logo.png" alt="TableFlow" className="h-9 w-auto shrink-0" />
             <span className="text-slate-300 mx-1">·</span>
             <span className="text-slate-500 text-sm">Configuration de votre restaurant</span>
           </div>

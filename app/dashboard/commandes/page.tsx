@@ -13,9 +13,12 @@ type Order = {
   status: OrderStatus;
   notes?: string;
   created_at: string;
+  payments?: { method: string; status: string }[];
 };
 
 type Table = { id: string; name: string };
+type MenuItem = { id: string; name: string; price: number; category: string };
+type CartItem  = { item: MenuItem; qty: number };
 
 const STATUS_CONFIG: Record<OrderStatus, { label: string; color: string; dot: string }> = {
   pending:   { label: "En attente",     color: "bg-orange-500/15 text-orange-400 border border-orange-500/30",   dot: "bg-orange-400" },
@@ -42,6 +45,14 @@ const STATUS_FILTERS: { key: OrderStatus | "all"; label: string }[] = [
   { key: "paid",     label: "Payé" },
 ];
 
+const ACTIVE_STATUS_FILTERS: { key: OrderStatus | "all"; label: string }[] = [
+  { key: "all",      label: "Toutes" },
+  { key: "pending",  label: "En attente" },
+  { key: "preparing",label: "En préparation" },
+  { key: "ready",    label: "Prêt" },
+  { key: "served",   label: "Servi" },
+];
+
 const PERIOD_FILTERS: { key: string; label: string }[] = [
   { key: "all",   label: "Tout" },
   { key: "today", label: "Aujourd'hui" },
@@ -49,7 +60,7 @@ const PERIOD_FILTERS: { key: string; label: string }[] = [
   { key: "30",    label: "30 jours" },
 ];
 
-const EMPTY_ORDER = { table_number: "", items: "", notes: "", total: "" };
+const EMPTY_ORDER = { table_number: "", notes: "" };
 
 function elapsed(created_at: string) {
   const diff = Math.floor((Date.now() - new Date(created_at).getTime()) / 60000);
@@ -69,14 +80,21 @@ export default function CommandesPage() {
   const [period, setPeriod] = useState("all");
   const [connected, setConnected] = useState(false);
   const [, setTick] = useState(0);
+  const [channelKey, setChannelKey] = useState(0);
   const [showExportMenu, setShowExportMenu] = useState(false);
   const exportRef = useRef<HTMLDivElement>(null);
+  const [view, setView] = useState<"active" | "historique">("active");
+  const [historySearch, setHistorySearch] = useState("");
 
   // Nouvelle commande
   const [showNewOrder, setShowNewOrder] = useState(false);
   const [orderForm, setOrderForm] = useState({ ...EMPTY_ORDER });
   const [orderSaving, setOrderSaving] = useState(false);
   const [orderError, setOrderError] = useState("");
+  const [menuItems, setMenuItems] = useState<MenuItem[]>([]);
+  const [cartItems, setCartItems] = useState<CartItem[]>([]);
+  const [menuSearch, setMenuSearch] = useState("");
+  const [customTable, setCustomTable] = useState(false);
 
   const normalize = (o: Order): Order => {
     const map: Record<string, OrderStatus> = {
@@ -156,12 +174,27 @@ export default function CommandesPage() {
       });
 
     return () => { supabaseClient.removeChannel(channel); };
-  }, [restaurantId]);
+  // channelKey changes when app returns from background → forces reconnect
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [restaurantId, channelKey]);
 
   useEffect(() => {
     const t = setInterval(() => setTick((n) => n + 1), 60000);
     return () => clearInterval(t);
   }, []);
+
+  // Reconnect Supabase Realtime when app returns from background (mobile sleep)
+  useEffect(() => {
+    if (!restaurantId) return;
+    function onVisibilityChange() {
+      if (document.visibilityState === "visible") {
+        loadOrders(restaurantId!, period);
+        setChannelKey((k) => k + 1);
+      }
+    }
+    document.addEventListener("visibilitychange", onVisibilityChange);
+    return () => document.removeEventListener("visibilitychange", onVisibilityChange);
+  }, [restaurantId, period, loadOrders]);
 
   async function advance(id: string, nextStatus: OrderStatus) {
     setUpdating(id);
@@ -192,11 +225,30 @@ export default function CommandesPage() {
     }
   }
 
+  function addToCart(item: MenuItem) {
+    setCartItems(prev => {
+      const ex = prev.find(c => c.item.id === item.id);
+      if (ex) return prev.map(c => c.item.id === item.id ? { ...c, qty: c.qty + 1 } : c);
+      return [...prev, { item, qty: 1 }];
+    });
+  }
+
+  function changeQty(itemId: string, delta: number) {
+    setCartItems(prev => prev
+      .map(c => c.item.id === itemId ? { ...c, qty: c.qty + delta } : c)
+      .filter(c => c.qty > 0)
+    );
+  }
+
   async function createOrder(e: React.FormEvent) {
     e.preventDefault();
     if (!restaurantId) return;
+    if (cartItems.length === 0) { setOrderError("Ajoutez au moins un article"); return; }
     setOrderSaving(true);
     setOrderError("");
+
+    const itemsStr = cartItems.map(c => `${c.qty}x ${c.item.name}`).join(", ");
+    const total = cartItems.reduce((s, c) => s + c.item.price * c.qty, 0);
 
     const res = await fetch("/api/orders", {
       method: "POST",
@@ -204,15 +256,16 @@ export default function CommandesPage() {
       body: JSON.stringify({
         restaurant_id: restaurantId,
         table_number: orderForm.table_number,
-        items: orderForm.items,
+        items: itemsStr,
         notes: orderForm.notes || undefined,
-        total: Number(orderForm.total),
+        total,
       }),
     });
 
     if (res.ok) {
       setShowNewOrder(false);
       setOrderForm({ ...EMPTY_ORDER });
+      setCartItems([]);
       await loadOrders(restaurantId);
     } else {
       const d = await res.json();
@@ -283,7 +336,14 @@ export default function CommandesPage() {
   const todayOrders = orders.filter((o) => o.created_at?.startsWith(today));
   const activeOrders = orders.filter((o) => ["pending", "preparing", "ready"].includes(o.status));
   const revenue = todayOrders.filter((o) => o.status === "paid").reduce((s, o) => s + Number(o.total), 0);
-  const filtered = filter === "all" ? orders : orders.filter((o) => o.status === filter);
+
+  const activeTabOrders = orders.filter((o) => ["pending", "preparing", "ready", "served"].includes(o.status));
+  const historyTabOrders = orders.filter((o) => ["paid", "cancelled"].includes(o.status));
+  const filteredActive = filter === "all" ? activeTabOrders : activeTabOrders.filter((o) => o.status === filter);
+  const filteredHistory = historySearch.trim()
+    ? historyTabOrders.filter((o) => o.table_number.toLowerCase().includes(historySearch.toLowerCase()))
+    : historyTabOrders;
+  const filtered = view === "active" ? filteredActive : filteredHistory;
 
   if (loading) {
     return (
@@ -339,7 +399,23 @@ export default function CommandesPage() {
           </div>
 
           <button
-            onClick={() => { setShowNewOrder(true); setOrderError(""); setOrderForm({ ...EMPTY_ORDER }); }}
+            onClick={async () => {
+              setShowNewOrder(true);
+              setOrderError("");
+              setOrderForm({ ...EMPTY_ORDER });
+              setCartItems([]);
+              setMenuSearch("");
+              setCustomTable(false);
+              if (restaurantId && menuItems.length === 0) {
+                const r = await fetch(`/api/menu?restaurant_id=${restaurantId}`);
+                if (r.ok) {
+                  const cats = await r.json() as Array<{ name: string; menu_items: Array<{ id: string; name: string; price: number; available: boolean }> }>;
+                  setMenuItems(cats.flatMap(cat =>
+                    (cat.menu_items ?? []).filter(i => i.available).map(i => ({ id: i.id, name: i.name, price: i.price, category: cat.name }))
+                  ));
+                }
+              }
+            }}
             className="inline-flex items-center gap-2 bg-orange-500 hover:bg-orange-600 text-white text-sm font-semibold px-4 py-2 rounded-xl transition-colors"
           >
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -355,7 +431,7 @@ export default function CommandesPage() {
         <>
           <div className="fixed inset-0 bg-black/50 z-50 backdrop-blur-sm" onClick={() => setShowNewOrder(false)} />
           <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4">
-            <div className="bg-white rounded-2xl w-full max-w-md shadow-2xl max-h-[90vh] overflow-y-auto">
+            <div className="bg-white rounded-2xl w-full max-w-lg shadow-2xl max-h-[90vh] overflow-y-auto">
               <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100">
                 <h2 className="font-bold text-slate-900">Nouvelle commande</h2>
                 <button onClick={() => setShowNewOrder(false)} className="p-1.5 text-green-700 hover:text-slate-700 hover:bg-slate-100 rounded-lg">
@@ -372,40 +448,146 @@ export default function CommandesPage() {
                 {/* Table */}
                 <div>
                   <label className="block text-sm font-medium text-slate-700 mb-1.5">Table <span className="text-red-400">*</span></label>
-                  {tables.length > 0 ? (
-                    <select
-                      value={orderForm.table_number}
-                      onChange={(e) => setOrderForm({ ...orderForm, table_number: e.target.value })}
-                      required
-                      className="w-full border border-slate-200 rounded-xl px-4 py-3 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-orange-400"
-                    >
-                      <option value="">Sélectionner une table…</option>
-                      {tables.map((t) => (
-                        <option key={t.id} value={t.name}>{t.name}</option>
-                      ))}
-                    </select>
+                  {tables.length > 0 && !customTable ? (
+                    <div className="space-y-1.5">
+                      <select
+                        value={orderForm.table_number}
+                        onChange={(e) => {
+                          if (e.target.value === "__custom__") {
+                            setCustomTable(true);
+                            setOrderForm({ ...orderForm, table_number: "" });
+                          } else {
+                            setOrderForm({ ...orderForm, table_number: e.target.value });
+                          }
+                        }}
+                        required={!customTable}
+                        className="w-full border border-slate-200 rounded-xl px-4 py-3 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-orange-400"
+                      >
+                        <option value="">Sélectionner une table…</option>
+                        {[...tables]
+                          .sort((a, b) => a.name.localeCompare(b.name, "fr", { numeric: true }))
+                          .map((t) => (
+                            <option key={t.id} value={t.name}>{t.name}</option>
+                          ))}
+                        <option value="__custom__">Autre (saisir manuellement)…</option>
+                      </select>
+                    </div>
                   ) : (
-                    <input
-                      value={orderForm.table_number}
-                      onChange={(e) => setOrderForm({ ...orderForm, table_number: e.target.value })}
-                      required
-                      className="w-full border border-slate-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400"
-                      placeholder="Ex : Table 5, VIP, Terrasse…"
-                    />
+                    <div className="space-y-1.5">
+                      <input
+                        value={orderForm.table_number}
+                        onChange={(e) => setOrderForm({ ...orderForm, table_number: e.target.value })}
+                        required
+                        autoFocus={customTable}
+                        className="w-full border border-slate-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400"
+                        placeholder="Ex : Table 5, VIP, Terrasse…"
+                      />
+                      {tables.length > 0 && (
+                        <button
+                          type="button"
+                          onClick={() => { setCustomTable(false); setOrderForm({ ...orderForm, table_number: "" }); }}
+                          className="text-xs text-orange-600 hover:underline"
+                        >
+                          ← Choisir depuis la liste
+                        </button>
+                      )}
+                    </div>
                   )}
                 </div>
 
                 {/* Articles */}
                 <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1.5">Articles commandés <span className="text-red-400">*</span></label>
-                  <textarea
-                    value={orderForm.items}
-                    onChange={(e) => setOrderForm({ ...orderForm, items: e.target.value })}
-                    required
-                    rows={3}
-                    className="w-full border border-slate-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400 resize-none"
-                    placeholder="Ex : 2x Thiéboudienne, 1x Coca Cola, 1x Attiéké…"
-                  />
+                  <label className="block text-sm font-medium text-slate-700 mb-1.5">
+                    Articles commandés <span className="text-red-400">*</span>
+                  </label>
+                  {menuItems.length === 0 ? (
+                    <div className="flex items-center justify-center py-6 text-sm text-slate-400">
+                      <svg className="w-4 h-4 mr-2 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v4m0 8v4M4 12H0m8 0H4m12 0h4m-8 0h4" />
+                      </svg>
+                      Chargement du menu…
+                    </div>
+                  ) : (
+                    <>
+                      <input
+                        value={menuSearch}
+                        onChange={(e) => setMenuSearch(e.target.value)}
+                        className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400 mb-2"
+                        placeholder="Rechercher un plat…"
+                      />
+                      <div className="border border-slate-200 rounded-xl overflow-y-auto max-h-44">
+                        {(() => {
+                          const q = menuSearch.toLowerCase();
+                          const hits = menuItems.filter(m => m.name.toLowerCase().includes(q));
+                          const cats = [...new Set(hits.map(m => m.category))];
+                          if (hits.length === 0) return (
+                            <div className="py-6 text-center text-sm text-slate-400">Aucun résultat</div>
+                          );
+                          return cats.map(cat => (
+                            <div key={cat}>
+                              <div className="px-3 py-1.5 text-xs font-bold text-slate-400 uppercase tracking-wide bg-slate-50 sticky top-0">
+                                {cat}
+                              </div>
+                              {hits.filter(m => m.category === cat).map(m => (
+                                <div key={m.id} className="flex items-center justify-between px-3 py-2.5 hover:bg-orange-50 border-b border-slate-50 last:border-0 transition-colors">
+                                  <div className="min-w-0 flex-1">
+                                    <div className="text-sm font-medium text-slate-800 truncate">{m.name}</div>
+                                    <div className="text-xs text-slate-400">{m.price.toLocaleString("fr-FR")} F</div>
+                                  </div>
+                                  <button
+                                    type="button"
+                                    onClick={() => addToCart(m)}
+                                    className="ml-3 w-7 h-7 shrink-0 rounded-lg bg-orange-100 hover:bg-orange-200 text-orange-600 font-bold text-lg flex items-center justify-center transition-colors"
+                                  >
+                                    +
+                                  </button>
+                                </div>
+                              ))}
+                            </div>
+                          ));
+                        })()}
+                      </div>
+
+                      {cartItems.length > 0 && (
+                        <div className="mt-3 border border-slate-200 rounded-xl overflow-hidden">
+                          <div className="px-3 py-2 bg-slate-50 text-xs font-bold text-slate-500 uppercase tracking-wide">
+                            Panier · {cartItems.length} article{cartItems.length > 1 ? "s" : ""}
+                          </div>
+                          {cartItems.map(c => (
+                            <div key={c.item.id} className="flex items-center gap-2 px-3 py-2.5 border-t border-slate-100">
+                              <div className="text-sm text-slate-700 truncate flex-1">{c.item.name}</div>
+                              <div className="flex items-center gap-1.5 shrink-0">
+                                <button
+                                  type="button"
+                                  onClick={() => changeQty(c.item.id, -1)}
+                                  className="w-6 h-6 rounded bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold flex items-center justify-center transition-colors"
+                                >
+                                  −
+                                </button>
+                                <span className="w-5 text-center text-sm font-semibold text-slate-900">{c.qty}</span>
+                                <button
+                                  type="button"
+                                  onClick={() => changeQty(c.item.id, 1)}
+                                  className="w-6 h-6 rounded bg-orange-100 hover:bg-orange-200 text-orange-600 font-bold flex items-center justify-center transition-colors"
+                                >
+                                  +
+                                </button>
+                              </div>
+                              <div className="w-20 text-right text-xs font-semibold text-slate-600 shrink-0">
+                                {(c.item.price * c.qty).toLocaleString("fr-FR")} F
+                              </div>
+                            </div>
+                          ))}
+                          <div className="px-3 py-3 bg-orange-50 border-t border-orange-100 flex items-center justify-between">
+                            <span className="text-sm font-bold text-slate-700">Total</span>
+                            <span className="text-lg font-extrabold text-orange-600">
+                              {cartItems.reduce((s, c) => s + c.item.price * c.qty, 0).toLocaleString("fr-FR")} F
+                            </span>
+                          </div>
+                        </div>
+                      )}
+                    </>
+                  )}
                 </div>
 
                 {/* Notes */}
@@ -416,21 +598,6 @@ export default function CommandesPage() {
                     onChange={(e) => setOrderForm({ ...orderForm, notes: e.target.value })}
                     className="w-full border border-slate-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400"
                     placeholder="Sans piment, allergie noix…"
-                  />
-                </div>
-
-                {/* Total */}
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1.5">Total (FCFA) <span className="text-red-400">*</span></label>
-                  <input
-                    type="number"
-                    min="0"
-                    step="50"
-                    value={orderForm.total}
-                    onChange={(e) => setOrderForm({ ...orderForm, total: e.target.value })}
-                    required
-                    className="w-full border border-slate-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400"
-                    placeholder="Ex : 7500"
                   />
                 </div>
 
@@ -469,43 +636,93 @@ export default function CommandesPage() {
         </div>
       </div>
 
-      {/* Filtre période */}
-      <div className="flex gap-2 flex-wrap items-center">
-        <span className="text-xs font-semibold text-slate-400 uppercase tracking-wide mr-1">Période :</span>
-        {PERIOD_FILTERS.map(({ key, label }) => (
-          <button key={key} onClick={() => setPeriod(key)}
-            className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-colors ${
-              period === key ? "bg-slate-800 text-white" : "bg-white text-slate-600 border border-slate-200 hover:border-slate-400"
-            }`}>
-            {label}
-          </button>
-        ))}
+      {/* Tabs */}
+      <div className="flex gap-1 bg-slate-100 p-1 rounded-xl w-fit">
+        <button
+          onClick={() => { setView("active"); setFilter("all"); }}
+          className={`px-4 py-2 rounded-lg text-sm font-semibold transition-colors ${
+            view === "active" ? "bg-white text-slate-900 shadow-sm" : "text-slate-500 hover:text-slate-700"
+          }`}
+        >
+          En cours
+          {activeTabOrders.length > 0 && (
+            <span className={`ml-1.5 px-1.5 py-0.5 rounded-full text-xs ${
+              view === "active" ? "bg-orange-100 text-orange-600" : "bg-slate-200 text-slate-500"
+            }`}>{activeTabOrders.length}</span>
+          )}
+        </button>
+        <button
+          onClick={() => { setView("historique"); setFilter("all"); }}
+          className={`px-4 py-2 rounded-lg text-sm font-semibold transition-colors ${
+            view === "historique" ? "bg-white text-slate-900 shadow-sm" : "text-slate-500 hover:text-slate-700"
+          }`}
+        >
+          Historique
+          {historyTabOrders.length > 0 && (
+            <span className={`ml-1.5 px-1.5 py-0.5 rounded-full text-xs ${
+              view === "historique" ? "bg-slate-100 text-slate-600" : "bg-slate-200 text-slate-500"
+            }`}>{historyTabOrders.length}</span>
+          )}
+        </button>
       </div>
 
-      {/* Filtre statut */}
-      <div className="flex gap-2 flex-wrap">
-        {STATUS_FILTERS.map(({ key, label }) => {
-          const count = key === "all" ? orders.length : orders.filter((o) => o.status === key).length;
-          return (
-            <button key={key} onClick={() => setFilter(key)}
-              className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-colors ${
-                filter === key ? "bg-orange-500 text-white" : "bg-white text-green-700 border border-slate-200 hover:border-orange-300"
-              }`}>
-              {label} {count > 0 && <span className="ml-1 opacity-70">({count})</span>}
-            </button>
-          );
-        })}
-      </div>
+      {/* Filtres — conditionnel selon l'onglet */}
+      {view === "active" ? (
+        <div className="flex gap-2 flex-wrap">
+          {ACTIVE_STATUS_FILTERS.map(({ key, label }) => {
+            const count = key === "all" ? activeTabOrders.length : activeTabOrders.filter((o) => o.status === key).length;
+            return (
+              <button key={key} onClick={() => setFilter(key)}
+                className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-colors ${
+                  filter === key ? "bg-orange-500 text-white" : "bg-white text-green-700 border border-slate-200 hover:border-orange-300"
+                }`}>
+                {label} {count > 0 && <span className="ml-1 opacity-70">({count})</span>}
+              </button>
+            );
+          })}
+        </div>
+      ) : (
+        <div className="flex flex-wrap items-center gap-3">
+          <div className="flex gap-2 flex-wrap items-center">
+            <span className="text-xs font-semibold text-slate-400 uppercase tracking-wide">Période :</span>
+            {PERIOD_FILTERS.map(({ key, label }) => (
+              <button key={key} onClick={() => setPeriod(key)}
+                className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-colors ${
+                  period === key ? "bg-slate-800 text-white" : "bg-white text-slate-600 border border-slate-200 hover:border-slate-400"
+                }`}>
+                {label}
+              </button>
+            ))}
+          </div>
+          <div className="relative flex-1 min-w-[200px] max-w-xs">
+            <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+            </svg>
+            <input
+              value={historySearch}
+              onChange={(e) => setHistorySearch(e.target.value)}
+              placeholder="Rechercher par table…"
+              className="w-full pl-9 pr-4 py-2 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-orange-400"
+            />
+          </div>
+        </div>
+      )}
 
       {/* Liste */}
       <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
         <div className="px-6 py-4 border-b border-slate-50 flex items-center justify-between">
-          <h2 className="font-bold text-slate-900">{filter === "all" ? "Toutes les commandes" : STATUS_CONFIG[filter as OrderStatus]?.label}</h2>
+          <h2 className="font-bold text-slate-900">
+            {view === "active"
+              ? (filter === "all" ? "Commandes en cours" : STATUS_CONFIG[filter as OrderStatus]?.label)
+              : "Historique des commandes"}
+          </h2>
           <span className="text-xs text-green-700">{filtered.length}</span>
         </div>
 
         {filtered.length === 0 ? (
-          <div className="px-6 py-12 text-center text-green-700 text-sm">Aucune commande</div>
+          <div className="px-6 py-12 text-center text-green-700 text-sm">
+            {view === "active" ? "Aucune commande en cours" : "Aucune commande dans l'historique"}
+          </div>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
@@ -515,14 +732,16 @@ export default function CommandesPage() {
                   <th className="px-4 md:px-6 py-3 font-medium hidden sm:table-cell">Articles</th>
                   <th className="px-4 md:px-6 py-3 font-medium">Total</th>
                   <th className="px-4 md:px-6 py-3 font-medium">Statut</th>
-                  <th className="px-4 md:px-6 py-3 font-medium hidden md:table-cell">Durée</th>
-                  <th className="px-4 md:px-6 py-3 font-medium">Action</th>
+                  <th className="px-4 md:px-6 py-3 font-medium hidden md:table-cell">
+                    {view === "active" ? "Durée" : "Date"}
+                  </th>
+                  <th className="px-4 md:px-6 py-3 font-medium">{view === "active" ? "Action" : "Reçu"}</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-50">
                 {filtered.map((order) => {
                   const cfg = STATUS_CONFIG[order.status] ?? STATUS_CONFIG.pending;
-                  const next = NEXT_STATUS[order.status];
+                  const next = view === "active" ? NEXT_STATUS[order.status] : undefined;
                   return (
                     <tr key={order.id} className="hover:bg-slate-50 transition-colors">
                       <td className="px-4 md:px-6 py-4 font-bold text-slate-900 text-base">
@@ -535,13 +754,23 @@ export default function CommandesPage() {
                         {Number(order.total).toLocaleString("fr-FR")} F
                       </td>
                       <td className="px-4 md:px-6 py-4">
-                        <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold ${cfg.color}`}>
-                          <div className={`w-1.5 h-1.5 rounded-full ${cfg.dot}`} />
-                          {cfg.label}
-                        </span>
+                        <div className="flex flex-col gap-1">
+                          <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold ${cfg.color}`}>
+                            <div className={`w-1.5 h-1.5 rounded-full ${cfg.dot}`} />
+                            {cfg.label}
+                          </span>
+                          {order.status === "paid" && (() => {
+                            const gp = order.payments?.find(p => p.method === "geniuspay");
+                            return gp
+                              ? <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-violet-500/10 text-violet-500 border border-violet-500/20">📱 Mobile Money</span>
+                              : <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-slate-100 text-slate-500 border border-slate-200">💵 Espèces</span>;
+                          })()}
+                        </div>
                       </td>
                       <td className="px-4 md:px-6 py-4 text-green-700 text-xs hidden md:table-cell whitespace-nowrap">
-                        {elapsed(order.created_at)}
+                        {view === "active"
+                          ? elapsed(order.created_at)
+                          : new Date(order.created_at).toLocaleDateString("fr-FR", { day: "2-digit", month: "short", year: "numeric" })}
                       </td>
                       <td className="px-4 md:px-6 py-4">
                         <div className="flex items-center gap-1.5">
@@ -551,7 +780,18 @@ export default function CommandesPage() {
                               {updating === order.id ? "…" : next.label}
                             </button>
                           )}
-                          {(order.status === "pending" || order.status === "preparing") && (
+                          <a
+                            href={`/receipt/${order.id}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            title="Imprimer le reçu"
+                            className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors"
+                          >
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
+                            </svg>
+                          </a>
+                          {view === "active" && (order.status === "pending" || order.status === "preparing") && (
                             <button onClick={() => cancel(order.id)} disabled={updating === order.id}
                               className="text-xs font-semibold px-2 py-1.5 rounded-lg text-red-400 hover:bg-red-50 transition-colors disabled:opacity-50">
                               ✕

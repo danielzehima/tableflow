@@ -11,9 +11,23 @@ type OrderNotif = {
   read: boolean;
 };
 
+// Singleton AudioContext — iOS Safari requires it to be resumed after a user gesture
+let _audioCtx: AudioContext | null = null;
+function getAudioCtx(): AudioContext | null {
+  if (typeof window === "undefined") return null;
+  try {
+    if (!_audioCtx) _audioCtx = new AudioContext();
+    if (_audioCtx.state === "suspended") _audioCtx.resume();
+    return _audioCtx;
+  } catch {
+    return null;
+  }
+}
+
 function playOrderSound() {
   try {
-    const ctx = new AudioContext();
+    const ctx = getAudioCtx();
+    if (!ctx) return;
     const osc = ctx.createOscillator();
     const gain = ctx.createGain();
     osc.connect(gain);
@@ -27,7 +41,7 @@ function playOrderSound() {
     osc.start(ctx.currentTime);
     osc.stop(ctx.currentTime + 0.5);
   } catch {
-    // AudioContext not available (SSR guard)
+    // ignore
   }
 }
 
@@ -36,6 +50,17 @@ export default function OrderNotificationBell({ restaurantId }: { restaurantId: 
   const [notifs, setNotifs] = useState<OrderNotif[]>([]);
   const lastSeenRef = useRef<string>(new Date().toISOString());
   const router = useRouter();
+
+  // Unlock AudioContext on first user gesture (required by iOS Safari)
+  useEffect(() => {
+    const unlock = () => getAudioCtx();
+    document.addEventListener("touchstart", unlock, { once: true });
+    document.addEventListener("click", unlock, { once: true });
+    return () => {
+      document.removeEventListener("touchstart", unlock);
+      document.removeEventListener("click", unlock);
+    };
+  }, []);
 
   const poll = useCallback(async () => {
     try {

@@ -4,12 +4,12 @@ import RestaurantPageClient from "./RestaurantPageClient";
 
 type Props = {
   params: Promise<{ restaurantSlug: string }>;
-  searchParams: Promise<{ table?: string }>;
+  searchParams: Promise<{ table?: string; paid?: string; order_id?: string }>;
 };
 
 export default async function RestaurantPage({ params, searchParams }: Props) {
   const { restaurantSlug } = await params;
-  const { table: tableParam } = await searchParams;
+  const { table: tableParam, paid, order_id } = await searchParams;
 
   const { data: restaurant, error } = await supabase
     .from("restaurants")
@@ -69,9 +69,10 @@ export default async function RestaurantPage({ params, searchParams }: Props) {
     coverImage: restaurant.cover_image || "/hero-restaurant.png",
     primaryColor: restaurant.primary_color || "#f97316",
     welcomeMessage: restaurant.welcome_message || "",
+    mapsUrl: restaurant.maps_url ?? "",
     images: (galleryData ?? []).map((i: { id: string; url: string }) => ({ id: i.id, url: i.url })),
     menu,
   };
 
-  return <RestaurantPageClient restaurant={restaurantData} tableParam={tableParam ?? ""} />;
+  return <RestaurantPageClient restaurant={restaurantData} tableParam={tableParam ?? ""} paidOrderId={paid === "1" ? (order_id ?? null) : null} />;
 }

@@ -35,8 +35,8 @@ export default function SuperAdminSidebar({ isOpen = false, onClose }: Props) {
       <div className="px-5 py-6 border-b border-slate-800">
         <div className="flex items-center justify-between">
           <Link href="/" className="flex items-center gap-2.5">
-            <div className="w-8 h-8 bg-orange-500 rounded-lg flex items-center justify-center text-white font-extrabold text-sm">
-              T
+            <div className="bg-white rounded-lg p-1 shrink-0">
+              <img src="/logo.png" alt="TableFlow" className="h-7 w-7 object-contain" />
             </div>
             <div>
               <div className="text-white font-extrabold text-sm leading-tight">TableFlow</div>

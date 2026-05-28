@@ -41,6 +41,16 @@ export default function MenuPage() {
   const [loading, setLoading] = useState(true);
   const [restaurantId, setRestaurantId] = useState("");
   const [toggling, setToggling] = useState<string | null>(null);
+  const [openCategories, setOpenCategories] = useState<Set<string>>(new Set());
+
+  function toggleCategory(id: string) {
+    setOpenCategories((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }
 
   // Modal ajout
   const [showModal, setShowModal] = useState(false);
@@ -68,7 +78,13 @@ export default function MenuPage() {
 
   async function reloadMenu(rid: string) {
     const r = await fetch(`/api/menu?restaurant_id=${rid}`);
-    if (r.ok) setCategories(await r.json());
+    if (r.ok) {
+      const data = await r.json();
+      setCategories(data);
+      setOpenCategories((prev) =>
+        prev.size === 0 && data.length > 0 ? new Set([data[0].id]) : prev
+      );
+    }
   }
 
   function openModal() {
@@ -251,17 +267,38 @@ export default function MenuPage() {
           </button>
         </div>
       ) : (
-        categories.map((cat) => (
+        categories.map((cat) => {
+          const isOpen = openCategories.has(cat.id);
+          return (
           <div key={cat.id} className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
-            <div className="px-6 py-4 border-b border-slate-50 flex items-center justify-between">
-              <h2 className="font-bold text-slate-900">{cat.name}</h2>
-              <span className="text-xs text-green-700">{cat.menu_items.length} plat{cat.menu_items.length > 1 ? "s" : ""}</span>
-            </div>
+            <button
+              type="button"
+              onClick={() => toggleCategory(cat.id)}
+              className="w-full px-6 py-4 flex items-center justify-between hover:bg-slate-50 transition-colors"
+            >
+              <div className="flex items-center gap-3">
+                <svg
+                  className={`w-4 h-4 text-slate-400 transition-transform duration-200 ${isOpen ? "rotate-90" : ""}`}
+                  fill="none" stroke="currentColor" viewBox="0 0 24 24"
+                >
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                </svg>
+                <h2 className="font-bold text-slate-900">{cat.name}</h2>
+              </div>
+              <div className="flex items-center gap-2">
+                {cat.menu_items.filter(i => !i.available).length > 0 && (
+                  <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-slate-100 text-slate-400">
+                    {cat.menu_items.filter(i => !i.available).length} indispo
+                  </span>
+                )}
+                <span className="text-xs text-green-700 font-medium">{cat.menu_items.length} plat{cat.menu_items.length > 1 ? "s" : ""}</span>
+              </div>
+            </button>
 
-            {cat.menu_items.length === 0 ? (
-              <div className="px-6 py-8 text-center text-green-700 text-sm">Aucun plat dans cette catégorie</div>
+            {isOpen && (cat.menu_items.length === 0 ? (
+              <div className="px-6 py-8 text-center text-green-700 text-sm border-t border-slate-50">Aucun plat dans cette catégorie</div>
             ) : (
-              <div className="divide-y divide-slate-50">
+              <div className="divide-y divide-slate-50 border-t border-slate-50">
                 {cat.menu_items.map((item) => (
                   <div key={item.id}
                     className="px-4 md:px-6 py-4 flex items-center gap-3 hover:bg-slate-50 transition-colors">
@@ -341,9 +378,9 @@ export default function MenuPage() {
                   </div>
                 ))}
               </div>
-            )}
+            ))}
           </div>
-        ))
+        );})
       )}
 
       {/* ── Modal Nouveau plat ── */}

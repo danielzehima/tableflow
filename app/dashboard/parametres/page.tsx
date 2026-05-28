@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import Image from "next/image";
 
 type Restaurant = {
@@ -15,6 +16,9 @@ type Restaurant = {
   hours: string;
   cuisine: string;
   cover_image: string;
+  whatsapp_number: string;
+  maps_url: string;
+  has_geniuspay?: boolean;
 };
 
 async function fetchRestaurantSlug(): Promise<string> {
@@ -25,6 +29,7 @@ async function fetchRestaurantSlug(): Promise<string> {
 }
 
 export default function ParametresPage() {
+  const router = useRouter();
   const [restaurant, setRestaurant] = useState<Restaurant | null>(null);
   const [form, setForm] = useState<Partial<Restaurant>>({});
   const [loading, setLoading] = useState(true);
@@ -33,7 +38,13 @@ export default function ParametresPage() {
   const [error, setError] = useState("");
   const [uploading, setUploading] = useState(false);
   const [uploadError, setUploadError] = useState("");
+  const [resetting, setResetting] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
+  const [gpKey, setGpKey] = useState("");
+  const [gpSecret, setGpSecret] = useState("");
+  const [gpSaving, setGpSaving] = useState(false);
+  const [gpSaved, setGpSaved] = useState(false);
+  const [gpError, setGpError] = useState("");
 
   useEffect(() => {
     async function init() {
@@ -53,6 +64,8 @@ export default function ParametresPage() {
         hours: data.hours,
         cuisine: data.cuisine,
         cover_image: data.cover_image ?? "",
+        whatsapp_number: data.whatsapp_number ?? "",
+        maps_url: data.maps_url ?? "",
       });
       setLoading(false);
     }
@@ -96,6 +109,39 @@ export default function ParametresPage() {
       }
     }
     setUploading(false);
+  }
+
+  async function handleResetOnboarding() {
+    if (!confirm("Relancer le wizard de configuration ? Vous serez redirigé vers l'onboarding.")) return;
+    setResetting(true);
+    await fetch("/api/onboarding/reset", { method: "POST" });
+    router.push("/dashboard/onboarding");
+    router.refresh();
+  }
+
+  async function handleSaveGeniusPay(e: React.FormEvent) {
+    e.preventDefault();
+    if (!restaurant || (!gpKey.trim() && !gpSecret.trim())) return;
+    setGpSaving(true);
+    setGpError("");
+    const res = await fetch(`/api/restaurants/${restaurant.slug}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        geniuspay_api_key: gpKey.trim() || undefined,
+        geniuspay_api_secret: gpSecret.trim() || undefined,
+      }),
+    });
+    if (res.ok) {
+      setGpSaved(true);
+      setGpKey("");
+      setGpSecret("");
+      setRestaurant((prev) => prev ? { ...prev, has_geniuspay: true } : prev);
+    } else {
+      const data = await res.json();
+      setGpError(data.error || "Erreur lors de la sauvegarde");
+    }
+    setGpSaving(false);
   }
 
   async function handleSubmit(e: React.FormEvent) {
@@ -227,6 +273,46 @@ export default function ParametresPage() {
           <Field label="Téléphone" name="phone" type="tel" value={form.phone ?? ""} onChange={handleChange} placeholder="+225 07 00 00 00 00" />
           <Field label="Email" name="email" type="email" value={form.email ?? ""} onChange={handleChange} placeholder="contact@monrestaurant.com" />
           <Field label="Horaires" name="hours" value={form.hours ?? ""} onChange={handleChange} placeholder="Ex : Lun-Sam : 12h-22h" />
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-1.5">
+              Numéro WhatsApp
+              <span className="ml-2 text-xs font-normal text-slate-400">— recevoir les commandes par WhatsApp</span>
+            </label>
+            <div className="relative">
+              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-base">📱</span>
+              <input
+                name="whatsapp_number"
+                type="tel"
+                value={form.whatsapp_number ?? ""}
+                onChange={handleChange}
+                placeholder="+225 07 00 00 00 00"
+                className="w-full border border-slate-200 rounded-xl pl-9 pr-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400 transition"
+              />
+            </div>
+            <p className="text-xs text-slate-400 mt-1">
+              Laissez vide pour désactiver les notifications WhatsApp.
+            </p>
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-1.5">
+              URL Google Maps (optionnel)
+              <span className="ml-2 text-xs font-normal text-slate-400">— carte précise sur votre page publique</span>
+            </label>
+            <div className="relative">
+              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-base">🗺️</span>
+              <input
+                name="maps_url"
+                type="url"
+                value={form.maps_url ?? ""}
+                onChange={handleChange}
+                placeholder="https://www.google.com/maps/embed?pb=…"
+                className="w-full border border-slate-200 rounded-xl pl-9 pr-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400 transition"
+              />
+            </div>
+            <p className="text-xs text-slate-400 mt-1">
+              Sur Google Maps → Partager → Intégrer une carte → copiez l&apos;URL du <code>src</code>. Laissez vide pour utiliser l&apos;adresse ci-dessus.
+            </p>
+          </div>
         </div>
 
         <button
@@ -237,6 +323,89 @@ export default function ParametresPage() {
           {saving ? "Enregistrement…" : "Sauvegarder les modifications"}
         </button>
       </form>
+
+      {/* Paiement GeniusPay */}
+      <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-6 space-y-5">
+        <div>
+          <h2 className="font-bold text-sm uppercase tracking-wide text-green-700">
+            Paiement client — GeniusPay
+          </h2>
+          <p className="text-xs text-slate-400 mt-1">
+            Vos clients paient directement sur votre compte GeniusPay.{" "}
+            <a href="https://pay.genius.ci" target="_blank" rel="noopener noreferrer" className="text-orange-500 hover:underline">
+              Créer un compte GeniusPay →
+            </a>
+          </p>
+        </div>
+
+        {restaurant.has_geniuspay && !gpSaved && (
+          <div className="flex items-center gap-2 bg-green-50 border border-green-200 text-green-700 text-sm rounded-xl px-4 py-2.5">
+            <span>✅</span>
+            <span>Clés GeniusPay configurées — les paiements vont sur votre compte</span>
+          </div>
+        )}
+        {gpSaved && (
+          <div className="flex items-center gap-2 bg-green-50 border border-green-200 text-green-700 text-sm rounded-xl px-4 py-2.5">
+            <span>✅</span>
+            <span>Nouvelles clés enregistrées avec succès</span>
+          </div>
+        )}
+        {gpError && (
+          <div className="bg-red-50 border border-red-200 text-red-600 text-sm rounded-xl px-4 py-2.5">
+            {gpError}
+          </div>
+        )}
+
+        <form onSubmit={handleSaveGeniusPay} className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-1.5">
+              API Key (Public Key)
+            </label>
+            <input
+              type="text"
+              value={gpKey}
+              onChange={(e) => { setGpKey(e.target.value); setGpSaved(false); }}
+              placeholder={restaurant.has_geniuspay ? "pk_live_••••••••••• (laisser vide pour conserver)" : "pk_live_xxxxxxxxxxxxxxx"}
+              className="w-full border border-slate-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400 transition font-mono"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-1.5">
+              API Secret (Private Key)
+            </label>
+            <input
+              type="password"
+              value={gpSecret}
+              onChange={(e) => { setGpSecret(e.target.value); setGpSaved(false); }}
+              placeholder={restaurant.has_geniuspay ? "sk_live_••••••••••• (laisser vide pour conserver)" : "sk_live_xxxxxxxxxxxxxxx"}
+              className="w-full border border-slate-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400 transition font-mono"
+            />
+          </div>
+          <button
+            type="submit"
+            disabled={gpSaving || (!gpKey.trim() && !gpSecret.trim())}
+            className="w-full bg-orange-500 hover:bg-orange-600 disabled:opacity-50 disabled:cursor-not-allowed text-white font-bold py-3 rounded-xl transition-colors"
+          >
+            {gpSaving ? "Enregistrement…" : "Enregistrer les clés GeniusPay"}
+          </button>
+        </form>
+      </div>
+
+      {/* Relancer l'onboarding */}
+      <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-6 space-y-3">
+        <h2 className="font-bold text-sm uppercase tracking-wide text-slate-400">Configuration initiale</h2>
+        <p className="text-sm text-slate-500">
+          Besoin de refaire la configuration de départ ? Le wizard vous guidera à nouveau à travers les 3 étapes.
+        </p>
+        <button
+          type="button"
+          onClick={handleResetOnboarding}
+          disabled={resetting}
+          className="w-full border border-slate-200 hover:border-orange-300 text-slate-600 hover:text-orange-600 font-semibold py-3 rounded-xl text-sm transition-colors disabled:opacity-60"
+        >
+          {resetting ? "Redirection…" : "Relancer le wizard de configuration"}
+        </button>
+      </div>
     </div>
   );
 }

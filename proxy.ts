@@ -16,6 +16,17 @@ export function proxy(request: NextRequest) {
     }
   }
 
+  // ── Admin guard ─────────────────────────────────────────────────
+  if (
+    pathname.startsWith("/admin") &&
+    pathname !== "/admin/login"
+  ) {
+    const token = request.cookies.get("admin_token")?.value;
+    if (!token) {
+      return NextResponse.redirect(new URL("/admin/login", request.url));
+    }
+  }
+
   // ── Dashboard gérant guard ──────────────────────────────────────
   if (pathname.startsWith("/dashboard")) {
     const session = request.cookies.get("tf_session")?.value;
@@ -35,6 +46,7 @@ export const config = {
   matcher: [
     "/superadmin/:path*",
     "/api/superadmin/:path*",
+    "/admin/:path*",
     "/dashboard/:path*",
   ],
 };

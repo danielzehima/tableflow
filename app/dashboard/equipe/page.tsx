@@ -10,9 +10,9 @@ type Member = {
 };
 
 const ROLES_SELECTABLE: { value: Role; label: string; desc: string }[] = [
-  { value: "manager", label: "Gérant",   desc: "Menu, réservations, commandes, stats" },
-  { value: "waiter",  label: "Serveur",  desc: "Réservations et commandes uniquement" },
-  { value: "cashier", label: "Caissier", desc: "Commandes uniquement" },
+  { value: "manager", label: "Gérant",     desc: "Menu, réservations, commandes, stats" },
+  { value: "waiter",  label: "Serveur",    desc: "Réservations et commandes uniquement" },
+  { value: "cashier", label: "Cuisinier",  desc: "Commandes + vue cuisine" },
 ];
 
 export default function EquipePage() {
@@ -128,7 +128,7 @@ export default function EquipePage() {
               {r === "owner"   && "Accès complet + gestion équipe"}
               {r === "manager" && "Menu, réservations, commandes, stats"}
               {r === "waiter"  && "Réservations + commandes"}
-              {r === "cashier" && "Commandes uniquement"}
+              {r === "cashier" && "Commandes + vue cuisine"}
             </div>
           </div>
         ))}

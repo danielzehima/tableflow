@@ -7,7 +7,7 @@ export async function PATCH(
 ) {
   const { slug } = await params;
   const body = await req.json();
-  const { name, address, phone, email, hours, cuisine, description, tagline, cover_image, primary_color, welcome_message } = body;
+  const { name, address, phone, email, hours, cuisine, description, tagline, cover_image, primary_color, welcome_message, whatsapp_number, maps_url, geniuspay_api_key, geniuspay_api_secret } = body;
 
   const update: Record<string, string> = {};
   if (name !== undefined) update.name = name;
@@ -21,6 +21,10 @@ export async function PATCH(
   if (cover_image !== undefined) update.cover_image = cover_image;
   if (primary_color !== undefined) update.primary_color = primary_color;
   if (welcome_message !== undefined) update.welcome_message = welcome_message;
+  if (whatsapp_number !== undefined) update.whatsapp_number = whatsapp_number;
+  if (maps_url !== undefined) update.maps_url = maps_url;
+  if (geniuspay_api_key?.trim()) update.geniuspay_api_key = geniuspay_api_key.trim();
+  if (geniuspay_api_secret?.trim()) update.geniuspay_api_secret = geniuspay_api_secret.trim();
 
   const { data, error } = await supabase
     .from("restaurants")
@@ -69,5 +73,9 @@ export async function GET(
     ),
   }));
 
-  return NextResponse.json({ ...restaurant, menu });
+  // Ne jamais exposer les clés API sensibles
+  const { geniuspay_api_key, geniuspay_api_secret, ...safeRestaurant } = restaurant;
+  const hasGeniuspay = !!(geniuspay_api_key && geniuspay_api_secret);
+
+  return NextResponse.json({ ...safeRestaurant, has_geniuspay: hasGeniuspay, menu });
 }

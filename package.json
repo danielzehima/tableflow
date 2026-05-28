@@ -9,6 +9,7 @@
     "lint": "eslint"
   },
   "dependencies": {
+    "@emailjs/nodejs": "^5.0.2",
     "@supabase/supabase-js": "^2.106.0",
     "jspdf": "^4.2.1",
     "jspdf-autotable": "^5.0.8",

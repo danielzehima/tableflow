@@ -1,6 +1,5 @@
 import { pbkdf2Sync, randomBytes, createHmac, timingSafeEqual } from "crypto";
 
-// Supprime le BOM (U+FEFF) ajouté par certains éditeurs sur les variables d'env
 function stripBom(s: string): string {
   return (s.charCodeAt(0) === 0xFEFF ? s.slice(1) : s).trim();
 }
@@ -65,30 +64,57 @@ export function verifyToken(token: string): SessionPayload | null {
   return payload;
 }
 
-// ── Permission helpers ───────────────────────────────────────────
+// ── Labels & couleurs ────────────────────────────────────────────
 
 export const ROLE_LABELS: Record<Role, string> = {
-  owner: "Propriétaire",
+  owner:   "Propriétaire",
   manager: "Gérant",
-  waiter: "Serveur",
-  cashier: "Caissier",
+  waiter:  "Serveur",
+  cashier: "Cuisinier",
 };
 
 export const ROLE_COLORS: Record<Role, string> = {
-  owner: "text-orange-300 bg-orange-500/15 border-orange-500/30",
+  owner:   "text-orange-300 bg-orange-500/15 border-orange-500/30",
   manager: "text-blue-300 bg-blue-500/15 border-blue-500/30",
-  waiter: "text-emerald-300 bg-emerald-500/15 border-emerald-500/30",
+  waiter:  "text-emerald-300 bg-emerald-500/15 border-emerald-500/30",
   cashier: "text-violet-300 bg-violet-500/15 border-violet-500/30",
 };
 
-export function canManageTeam(role: Role) {
-  return role === "owner";
+// ── Permissions ───────────────────────────────────────────────────
+//
+// Propriétaire : tout (14 items)
+// Gérant       : Vue d'ensemble, Réservations, Commandes, Analytics, Menu digital
+// Serveur      : Réservations, Commandes
+// Cuisinier    : Commandes, Vue Cuisine
+
+// Réservations (item 2)
+export function canAccessReservations(role: Role) {
+  return role === "owner" || role === "manager" || role === "waiter";
 }
 
+// Analytics / Vue d'ensemble (items 1, 5)
+export function canViewStats(role: Role) {
+  return role === "owner" || role === "manager";
+}
+
+// Menu digital (item 10)
 export function canManageMenu(role: Role) {
   return role === "owner" || role === "manager";
 }
 
-export function canViewStats(role: Role) {
-  return role === "owner" || role === "manager";
+// Vue Cuisine (item 8)
+export function canAccessKitchen(role: Role) {
+  return role === "owner" || role === "cashier";
+}
+
+// Tout le reste (items 4,6,7,9,11,12,13 + Équipe) : propriétaire uniquement
+export function canManageTeam(role: Role) {
+  return role === "owner";
+}
+
+// Page de redirection après login selon le rôle
+export function landingPage(role: Role): string {
+  if (role === "waiter")  return "/dashboard/reservations";
+  if (role === "cashier") return "/dashboard/commandes";
+  return "/dashboard";
 }

@@ -1,47 +1,51 @@
 import { NextResponse } from "next/server";
 import { supabase } from "../../lib/supabase-server";
 import { getSession } from "../../lib/auth-server";
-
-const PLAN_PRICES: Record<string, number> = { free: 0, starter: 9900, pro: 24900 };
+import { initGeniusPayPayment } from "../../lib/geniuspay";
 
 export async function POST(req: Request) {
   const session = await getSession();
   if (!session) return NextResponse.json({ error: "Non autorisé" }, { status: 401 });
 
-  const { plan, method, phone } = await req.json();
+  const { plan } = await req.json();
+  if (!plan) return NextResponse.json({ error: "Plan invalide" }, { status: 400 });
 
-  if (!plan || !method) {
-    return NextResponse.json({ error: "Plan et méthode requis" }, { status: 400 });
+  const { data: planSetting } = await supabase
+    .from("plan_settings")
+    .select("price")
+    .eq("plan", plan)
+    .single();
+
+  const amount = planSetting?.price ?? 0;
+  if (amount === 0) {
+    return NextResponse.json({ error: "Plan invalide ou gratuit" }, { status: 400 });
   }
 
-  const amount = PLAN_PRICES[plan] ?? 0;
-  const reference = `TF-${Date.now()}-${Math.random().toString(36).slice(2, 7).toUpperCase()}`;
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://tableflow-gilt.vercel.app";
 
-  // Simulate payment processing (in production: call Wave/Orange Money/PayDunya API here)
-  // For now we always succeed after recording the payment
-  const { error: payErr } = await supabase.from("payments").insert({
+  const result = await initGeniusPayPayment({
+    amount,
+    description: `Abonnement TableFlow — Plan ${plan}`,
+    returnUrl: `${appUrl}/dashboard/abonnement`,
+    customerName: session.name ?? "Restaurant",
+    metadata: { restaurant_id: session.restaurantId, plan },
+  });
+
+  if (!result.success || !result.data?.checkout_url) {
+    return NextResponse.json({ error: result.message ?? "Erreur GeniusPay" }, { status: 400 });
+  }
+
+  const { error: insertErr } = await supabase.from("payments").insert({
     restaurant_id: session.restaurantId,
     plan,
     amount,
-    currency: "FCFA",
-    method,
-    phone: phone ?? null,
-    status: "success",
-    reference,
+    currency: "XOF",
+    method: "geniuspay",
+    status: "pending",
+    reference: result.data.reference,
   });
 
-  if (payErr) return NextResponse.json({ error: payErr.message }, { status: 500 });
+  if (insertErr) return NextResponse.json({ error: insertErr.message }, { status: 500 });
 
-  // Update restaurant plan
-  const expiresAt = new Date();
-  expiresAt.setMonth(expiresAt.getMonth() + 1);
-
-  const { error: planErr } = await supabase
-    .from("restaurants")
-    .update({ plan, plan_expires_at: expiresAt.toISOString(), status: "active" })
-    .eq("id", session.restaurantId);
-
-  if (planErr) return NextResponse.json({ error: planErr.message }, { status: 500 });
-
-  return NextResponse.json({ ok: true, reference, plan, amount });
+  return NextResponse.json({ payment_url: result.data.checkout_url, transaction_id: result.data.reference });
 }

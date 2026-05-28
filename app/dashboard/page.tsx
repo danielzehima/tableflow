@@ -115,7 +115,7 @@ export default async function DashboardPage() {
   const displayStats = stats.length > 0 ? stats : emptyStats;
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-8 pb-24 lg:pb-0">
       {/* ── Stats ── */}
       <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-5">
         {displayStats.map((stat) => (
@@ -245,25 +245,27 @@ export default async function DashboardPage() {
         </div>
       </div>
 
-      {/* ── Actions rapides ── */}
-      <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-6">
-        <h2 className="font-bold text-slate-900 mb-4">Actions rapides</h2>
-        <div className="flex flex-wrap gap-3">
-          {[
-            { icon: "➕", label: "Ajouter un plat", href: "/dashboard/menu" },
-            { icon: "📋", label: "Modifier le menu", href: "/dashboard/menu" },
-            { icon: "📊", label: "Voir les analytics", href: "/dashboard/analytics" },
-            { icon: "🌐", label: "Voir ma page publique", href: `/${restaurant?.slug ?? "le-bonus"}` },
-            { icon: "⚙️", label: "Paramètres", href: "/dashboard/parametres" },
-          ].map(({ icon, label, href }) => (
-            <a
-              key={label}
-              href={href}
-              className="flex items-center gap-2 px-4 py-2.5 rounded-xl border border-slate-200 text-sm font-medium text-slate-700 hover:bg-orange-50 hover:border-orange-200 hover:text-orange-700 transition-colors"
-            >
-              <span>{icon}</span> {label}
-            </a>
-          ))}
+      {/* ── Actions rapides — sticky bottom on mobile, static on desktop ── */}
+      <div className="sticky bottom-0 z-20 lg:static lg:z-auto -mx-4 md:-mx-8 lg:mx-0">
+        <div className="bg-white lg:rounded-2xl border-t lg:border border-slate-100 shadow-[0_-2px_12px_rgba(0,0,0,0.07)] lg:shadow-sm px-4 md:px-8 lg:px-6 pt-3 pb-5 lg:py-6">
+          <h2 className="font-bold text-slate-900 mb-3 text-sm lg:text-base">Actions rapides</h2>
+          <div className="flex gap-2 overflow-x-auto pb-1 lg:flex-wrap lg:pb-0 scrollbar-hide">
+            {[
+              { icon: "➕", label: "Ajouter un plat",      href: "/dashboard/menu" },
+              { icon: "📋", label: "Modifier le menu",     href: "/dashboard/menu" },
+              { icon: "📊", label: "Voir les analytics",   href: "/dashboard/analytics" },
+              { icon: "🌐", label: "Ma page publique",     href: `/${restaurant?.slug ?? ""}` },
+              { icon: "⚙️", label: "Paramètres",           href: "/dashboard/parametres" },
+            ].map(({ icon, label, href }) => (
+              <a
+                key={label}
+                href={href}
+                className="shrink-0 flex items-center gap-2 px-4 py-2.5 rounded-xl border border-slate-200 text-sm font-medium text-slate-700 hover:bg-orange-50 hover:border-orange-200 hover:text-orange-700 transition-colors"
+              >
+                <span>{icon}</span> {label}
+              </a>
+            ))}
+          </div>
         </div>
       </div>
     </div>

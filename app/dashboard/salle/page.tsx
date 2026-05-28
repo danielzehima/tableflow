@@ -25,10 +25,21 @@ const ACTIVE_STATUSES: OrderStatus[] = ["pending", "preparing", "ready", "served
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
 function parseItems(items: OrderItem[] | string): OrderItem[] {
+  if (Array.isArray(items)) return items;
   if (typeof items === "string") {
-    try { return JSON.parse(items); } catch { return []; }
+    try {
+      const parsed = JSON.parse(items);
+      if (Array.isArray(parsed)) return parsed;
+    } catch { /* not JSON, try text format */ }
+    return items
+      .split(",")
+      .map((s) => s.trim())
+      .flatMap((part) => {
+        const m = part.match(/^(\d+)x\s+(.+)$/);
+        return m ? [{ quantity: parseInt(m[1], 10), name: m[2].trim(), price: 0 }] : [];
+      });
   }
-  return items ?? [];
+  return [];
 }
 
 function getTableState(orders: Order[]): TableState {

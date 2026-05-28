@@ -21,6 +21,7 @@ const METHOD_INFO: Record<string, { label: string; color: string; icon: string; 
   orange_money: { label: "Orange Money", color: "bg-orange-500", icon: "OM", placeholder: "+221 76 000 00 00", },
   free_money: { label: "Free Money", color: "bg-emerald-500", icon: "FM", placeholder: "+221 78 000 00 00", },
   carte: { label: "Carte bancaire", color: "bg-blue-600", icon: "CB", placeholder: "", },
+  geniuspay: { label: "GeniusPay", color: "bg-violet-600", icon: "GP", placeholder: "", },
 };
 
 const PLAN_LABELS: Record<string, string> = { free: "Gratuit", starter: "Starter", pro: "Pro" };
@@ -65,20 +66,16 @@ export default function AbonnementPage() {
     setStep("processing");
     setPayError("");
 
-    // Simulate network delay (in production: real API call)
-    await new Promise((r) => setTimeout(r, 2500));
-
     const res = await fetch("/api/paiement", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ plan: selectedPlan.plan, method, phone }),
+      body: JSON.stringify({ plan: selectedPlan.plan }),
     });
 
     if (res.ok) {
       const data = await res.json();
-      setReference(data.reference);
-      setStep("success");
-      await load();
+      // Rediriger vers la page de paiement CinetPay
+      window.location.href = data.payment_url;
     } else {
       const d = await res.json();
       setPayError(d.error ?? "Erreur lors du paiement");
@@ -239,22 +236,17 @@ export default function AbonnementPage() {
               ) : step === "processing" ? (
                 <div className="text-center py-8">
                   <div className="w-16 h-16 border-4 border-orange-200 border-t-orange-500 rounded-full animate-spin mx-auto mb-5" />
-                  <p className="text-slate-700 font-semibold">Traitement en cours…</p>
-                  <p className="text-green-700 text-sm mt-1">
-                    {method === "wave" && "En attente de confirmation sur l'app Wave"}
-                    {method === "orange_money" && "Vérifiez votre téléphone Orange Money"}
-                    {method === "free_money" && "Confirmez sur votre app Free Money"}
-                    {method === "carte" && "Traitement de votre carte en cours"}
-                  </p>
+                  <p className="text-slate-700 font-semibold">Redirection vers GeniusPay…</p>
+                  <p className="text-slate-400 text-sm mt-1">Vous allez être redirigé vers la page de paiement sécurisé.</p>
                 </div>
               ) : (
                 <>
                   <div className="flex items-center justify-between mb-5">
                     <div>
-                      <h2 className="text-lg font-bold text-slate-900">Paiement</h2>
-                      <p className="text-green-700 text-sm">Plan {selectedPlan.label} — <strong>{selectedPlan.price.toLocaleString("fr-FR")} {selectedPlan.currency}/mois</strong></p>
+                      <h2 className="text-lg font-bold text-slate-900">Confirmer l&apos;abonnement</h2>
+                      <p className="text-slate-500 text-sm">Plan <strong>{selectedPlan.label}</strong> — {selectedPlan.price.toLocaleString("fr-FR")} {selectedPlan.currency}/mois</p>
                     </div>
-                    <button onClick={closeModal} className="text-green-700 hover:text-slate-600 p-1">
+                    <button onClick={closeModal} className="text-slate-400 hover:text-slate-600 p-1">
                       <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                       </svg>
@@ -265,69 +257,36 @@ export default function AbonnementPage() {
                     <div className="mb-4 bg-red-50 border border-red-200 text-red-600 text-sm rounded-xl px-4 py-3">{payError}</div>
                   )}
 
-                  {/* Method selection */}
-                  <div className="mb-5">
-                    <label className="block text-xs font-semibold text-green-700 mb-2 uppercase tracking-wide">Moyen de paiement</label>
-                    <div className="grid grid-cols-2 gap-2">
-                      {Object.entries(METHOD_INFO).map(([key, info]) => (
-                        <button key={key} type="button" onClick={() => setMethod(key)}
-                          className={`flex items-center gap-2.5 p-3 rounded-xl border text-left transition-all ${method === key ? "border-orange-500 bg-orange-50" : "border-slate-200 hover:border-slate-300"}`}>
-                          <div className={`w-8 h-8 rounded-lg ${info.color} flex items-center justify-center text-white text-xs font-black shrink-0`}>
-                            {info.icon}
-                          </div>
-                          <span className="text-sm font-semibold text-slate-800">{info.label}</span>
-                        </button>
+                  {/* Moyens de paiement disponibles */}
+                  <div className="mb-5 bg-slate-50 rounded-xl p-4">
+                    <p className="text-xs font-semibold text-slate-500 mb-1 uppercase tracking-wide">Moyens de paiement acceptés</p>
+                    <p className="text-xs text-slate-400 mb-3">Vous choisirez votre méthode sur la page de paiement GeniusPay.</p>
+                    <div className="flex flex-wrap gap-2">
+                      {[
+                        { label: "Orange Money", color: "bg-orange-500" },
+                        { label: "Wave", color: "bg-yellow-400" },
+                        { label: "MTN MoMo", color: "bg-yellow-500" },
+                        { label: "Moov Money", color: "bg-blue-500" },
+                        { label: "Carte Visa/MC", color: "bg-blue-700" },
+                      ].map((m) => (
+                        <span key={m.label} className={`${m.color} text-white text-[10px] font-semibold px-2.5 py-1 rounded-full select-none pointer-events-none`}>
+                          {m.label}
+                        </span>
                       ))}
                     </div>
                   </div>
-
-                  {/* Phone (for mobile money) */}
-                  {method !== "carte" && (
-                    <div className="mb-5">
-                      <label className="block text-xs font-semibold text-green-700 mb-2 uppercase tracking-wide">Numéro de téléphone</label>
-                      <input
-                        type="tel" value={phone} onChange={e => setPhone(e.target.value)}
-                        placeholder={METHOD_INFO[method]?.placeholder}
-                        className="w-full border border-slate-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400"
-                      />
-                    </div>
-                  )}
-
-                  {/* Card form (simplified) */}
-                  {method === "carte" && (
-                    <div className="mb-5 space-y-3">
-                      <div>
-                        <label className="block text-xs font-semibold text-green-700 mb-2 uppercase tracking-wide">Numéro de carte</label>
-                        <input type="text" placeholder="•••• •••• •••• ••••" maxLength={19}
-                          className="w-full border border-slate-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400" />
-                      </div>
-                      <div className="grid grid-cols-2 gap-3">
-                        <div>
-                          <label className="block text-xs font-semibold text-green-700 mb-2 uppercase tracking-wide">Expiration</label>
-                          <input type="text" placeholder="MM/AA"
-                            className="w-full border border-slate-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400" />
-                        </div>
-                        <div>
-                          <label className="block text-xs font-semibold text-green-700 mb-2 uppercase tracking-wide">CVV</label>
-                          <input type="text" placeholder="•••" maxLength={4}
-                            className="w-full border border-slate-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400" />
-                        </div>
-                      </div>
-                    </div>
-                  )}
 
                   <div className="flex gap-3">
                     <button onClick={closeModal} className="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold py-3 rounded-xl text-sm transition-colors">
                       Annuler
                     </button>
-                    <button onClick={pay}
-                      className="flex-1 bg-orange-500 hover:bg-orange-600 text-white font-bold py-3 rounded-xl text-sm transition-colors">
+                    <button onClick={pay} className="flex-1 bg-orange-500 hover:bg-orange-600 text-white font-bold py-3 rounded-xl text-sm transition-colors">
                       Payer {selectedPlan.price.toLocaleString("fr-FR")} {selectedPlan.currency}
                     </button>
                   </div>
 
-                  <p className="text-center text-green-700 text-xs mt-4">
-                    🔒 Paiement sécurisé — Mode simulation
+                  <p className="text-center text-slate-400 text-xs mt-4">
+                    Paiement sécurisé via GeniusPay
                   </p>
                 </>
               )}
