@@ -157,7 +157,7 @@ export default async function ReceiptPage({ params }: { params: Promise<{ orderI
                   </span>
                   {item.unitPrice != null && (
                     <span className="text-slate-400 text-xs ml-1.5">
-                      ({item.unitPrice.toLocaleString("fr-FR")} × {item.quantity})
+                      ({formatMoney(item.unitPrice, currency)} × {item.quantity})
                     </span>
                   )}
                 </div>

@@ -62,8 +62,13 @@ function playReadySound() {
 export default function ReadyOrderBell({ restaurantId }: { restaurantId: string }) {
   const [open, setOpen] = useState(false);
   const [notifs, setNotifs] = useState<ReadyNotif[]>([]);
+  const [toasts, setToasts] = useState<ReadyNotif[]>([]);
   const seenIds = useRef<Set<string>>(new Set());
   const router = useRouter();
+
+  const dismissToast = useCallback((id: string) => {
+    setToasts((prev) => prev.filter((t) => t.id !== id));
+  }, []);
 
   // Débloque l'AudioContext au premier geste utilisateur (requis iOS Safari)
   useEffect(() => {
@@ -79,11 +84,16 @@ export default function ReadyOrderBell({ restaurantId }: { restaurantId: string 
   const pushReady = useCallback((o: OrderRow, withAlert: boolean) => {
     if (seenIds.current.has(o.id)) return;
     seenIds.current.add(o.id);
-    if (withAlert) playReadySound();
-    setNotifs((prev) => [
-      { id: o.id, table_number: o.table_number, items: o.items, created_at: o.created_at, read: !withAlert },
-      ...prev,
-    ].slice(0, 8));
+    const entry: ReadyNotif = {
+      id: o.id, table_number: o.table_number, items: o.items, created_at: o.created_at, read: !withAlert,
+    };
+    setNotifs((prev) => [entry, ...prev].slice(0, 8));
+    if (withAlert) {
+      playReadySound();
+      // Toast visible automatiquement (auto-disparition après 7 s)
+      setToasts((prev) => [entry, ...prev.filter((t) => t.id !== o.id)].slice(0, 3));
+      setTimeout(() => setToasts((prev) => prev.filter((t) => t.id !== o.id)), 7000);
+    }
   }, []);
 
   // Au montage : précharger les commandes déjà "prêtes" (affichées sans alarme)
@@ -146,6 +156,32 @@ export default function ReadyOrderBell({ restaurantId }: { restaurantId: string 
 
   return (
     <div className="relative">
+      {/* ── Toasts automatiques "plat prêt" (visibles sur tous les écrans) ── */}
+      {toasts.length > 0 && (
+        <div className="fixed top-4 left-1/2 -translate-x-1/2 sm:left-auto sm:right-4 sm:translate-x-0 z-[100] flex flex-col gap-2 w-[calc(100vw-2rem)] sm:w-80 pointer-events-none">
+          {toasts.map((t) => (
+            <button
+              key={t.id}
+              onClick={() => { dismissToast(t.id); router.push("/dashboard/commandes"); }}
+              className="pointer-events-auto text-left bg-white border border-emerald-200 shadow-2xl rounded-2xl px-4 py-3 flex items-start gap-3 hover:bg-emerald-50/50 transition-colors"
+            >
+              <div className="w-9 h-9 rounded-xl bg-emerald-500 text-white flex items-center justify-center text-lg shrink-0">🍽️</div>
+              <div className="flex-1 min-w-0">
+                <div className="font-bold text-slate-900 text-sm">Table {t.table_number} — plat prêt</div>
+                <div className="text-slate-500 text-xs mt-0.5 line-clamp-2">{t.items}</div>
+                <div className="text-emerald-600 text-xs font-semibold mt-1">À récupérer et servir →</div>
+              </div>
+              <span
+                role="button"
+                tabIndex={-1}
+                onClick={(e) => { e.stopPropagation(); dismissToast(t.id); }}
+                className="text-slate-300 hover:text-slate-500 text-lg leading-none shrink-0"
+              >×</span>
+            </button>
+          ))}
+        </div>
+      )}
+
       <button
         onClick={() => setOpen((v) => !v)}
         className="relative w-9 h-9 flex items-center justify-center rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-600 transition-colors"

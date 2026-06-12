@@ -1,8 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useMoney, useCurrency } from "../components/CurrencyContext";
-import { currencySymbol } from "../../lib/currency";
+import { useMoney } from "../components/CurrencyContext";
 
 type PromoCode = {
   id: string;
@@ -29,7 +28,6 @@ function fmtValue(code: PromoCode, money: (n: number) => string) {
 
 export default function CodesPromoPage() {
   const money = useMoney();
-  const currency = useCurrency();
   const [codes, setCodes] = useState<PromoCode[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -154,12 +152,12 @@ export default function CodesPromoPage() {
                   className="w-full bg-slate-800 border border-slate-700 text-white rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500"
                 >
                   <option value="percent">Pourcentage (%)</option>
-                  <option value="fixed">Montant fixe ({currencySymbol(currency)})</option>
+                  <option value="fixed">Montant fixe (FCFA)</option>
                 </select>
               </div>
               <div>
                 <label className="block text-xs font-semibold text-slate-400 mb-1.5 uppercase tracking-wide">
-                  Valeur * {form.type === "percent" ? "(en %)" : `(en ${currencySymbol(currency)})`}
+                  Valeur * {form.type === "percent" ? "(en %)" : "(en FCFA)"}
                 </label>
                 <input
                   name="value" type="number" required value={form.value} onChange={handleChange}
@@ -170,7 +168,7 @@ export default function CodesPromoPage() {
               </div>
               <div>
                 <label className="block text-xs font-semibold text-slate-400 mb-1.5 uppercase tracking-wide">
-                  Commande minimum ({currencySymbol(currency)})
+                  Commande minimum (FCFA)
                 </label>
                 <input
                   name="min_order" type="number" value={form.min_order} onChange={handleChange}

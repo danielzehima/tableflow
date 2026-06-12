@@ -3,7 +3,7 @@
 import { useEffect, useState, useCallback, useRef } from "react";
 import { supabaseClient } from "../../lib/supabase-client";
 import { useMoney, useCurrency } from "../components/CurrencyContext";
-import { currencySymbol } from "../../lib/currency";
+import { currencySymbol, toBaseXof } from "../../lib/currency";
 
 type OrderStatus = "pending" | "preparing" | "ready" | "served" | "paid" | "cancelled";
 
@@ -246,7 +246,8 @@ export default function CommandesPage() {
   // ── Valide l'encaissement espèces ────────────────────────────────────────
   async function confirmCashPayment() {
     if (!cashOrder) return;
-    const received = parseFloat(amountReceived) || 0;
+    // La somme reçue est saisie dans la devise d'affichage → reconvertie en FCFA (base)
+    const received = toBaseXof(parseFloat(amountReceived) || 0, currency);
     const total = Number(cashOrder.total);
     if (received < total) return; // sécurité (le bouton est disabled, mais au cas où)
 
@@ -869,7 +870,8 @@ export default function CommandesPage() {
       {/* ── MODAL 1 : Encaissement espèces ───────────────────────────────── */}
       {cashOrder && (() => {
         const total = Number(cashOrder.total);
-        const received = parseFloat(amountReceived) || 0;
+        // Saisie en devise d'affichage → reconvertie en FCFA (base) pour les calculs
+        const received = toBaseXof(parseFloat(amountReceived) || 0, currency);
         const change = received - total;
         const canValidate = received >= total;
 
@@ -932,7 +934,7 @@ export default function CommandesPage() {
                       <input
                         type="number"
                         min={0}
-                        step={1}
+                        step={currency === "XOF" ? 1 : 0.01}
                         autoFocus
                         value={amountReceived}
                         onChange={(e) => setAmountReceived(e.target.value)}

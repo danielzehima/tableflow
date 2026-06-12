@@ -1,71 +1,5 @@
 import { NextResponse } from "next/server";
 import { supabase } from "../../../lib/supabase-server";
-import { asCurrency, convertAmount, type Currency } from "../../../lib/currency";
-
-/**
- * Convertit tous les montants "restaurant" (menu, événements, codes promo)
- * de l'ancienne devise vers la nouvelle. Les commandes/paiements passés ne
- * sont PAS touchés (ils reflètent la devise au moment de la transaction).
- */
-async function convertRestaurantPrices(
-  restaurantId: string,
-  from: Currency,
-  to: Currency
-): Promise<void> {
-  // ── 1. Plats du menu (via les catégories du restaurant) ──
-  const { data: cats } = await supabase
-    .from("menu_categories")
-    .select("id")
-    .eq("restaurant_id", restaurantId);
-  const catIds = (cats ?? []).map((c) => c.id);
-  if (catIds.length) {
-    const { data: items } = await supabase
-      .from("menu_items")
-      .select("id, price")
-      .in("category_id", catIds);
-    await Promise.all(
-      (items ?? []).map((it) =>
-        supabase
-          .from("menu_items")
-          .update({ price: convertAmount(Number(it.price), from, to) })
-          .eq("id", it.id)
-      )
-    );
-  }
-
-  // ── 2. Événements ──
-  const { data: events } = await supabase
-    .from("events")
-    .select("id, price")
-    .eq("restaurant_id", restaurantId);
-  await Promise.all(
-    (events ?? [])
-      .filter((e) => Number(e.price) > 0)
-      .map((e) =>
-        supabase
-          .from("events")
-          .update({ price: convertAmount(Number(e.price), from, to) })
-          .eq("id", e.id)
-      )
-  );
-
-  // ── 3. Codes promo (montant fixe + commande minimum) ──
-  const { data: promos } = await supabase
-    .from("promo_codes")
-    .select("id, type, value, min_order")
-    .eq("restaurant_id", restaurantId);
-  await Promise.all(
-    (promos ?? []).map((p) =>
-      supabase
-        .from("promo_codes")
-        .update({
-          value: p.type === "fixed" ? convertAmount(Number(p.value), from, to) : p.value,
-          min_order: convertAmount(Number(p.min_order), from, to),
-        })
-        .eq("id", p.id)
-    )
-  );
-}
 
 export async function PATCH(
   req: Request,
@@ -93,21 +27,6 @@ export async function PATCH(
   if (geniuspay_api_key?.trim()) update.geniuspay_api_key = geniuspay_api_key.trim();
   if (geniuspay_api_secret?.trim()) update.geniuspay_api_secret = geniuspay_api_secret.trim();
 
-  // ── Détection d'un changement de devise → conversion des prix ──
-  let conversion: { from: Currency; to: Currency; id: string } | null = null;
-  if (update.currency) {
-    const { data: current } = await supabase
-      .from("restaurants")
-      .select("id, currency")
-      .eq("slug", slug)
-      .single();
-    const from = asCurrency(current?.currency);
-    const to = asCurrency(update.currency);
-    if (current && from !== to) {
-      conversion = { from, to, id: current.id as string };
-    }
-  }
-
   const { data, error } = await supabase
     .from("restaurants")
     .update(update)
@@ -119,12 +38,7 @@ export async function PATCH(
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 
-  // Convertir les prix APRÈS la mise à jour de la devise (non bloquant en cas d'échec partiel)
-  if (conversion) {
-    await convertRestaurantPrices(conversion.id, conversion.from, conversion.to);
-  }
-
-  return NextResponse.json({ ...data, converted: !!conversion });
+  return NextResponse.json(data);
 }
 
 export async function GET(
