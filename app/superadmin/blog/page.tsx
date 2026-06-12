@@ -59,6 +59,14 @@ export default function SuperadminBlogPage() {
     setShowForm(true);
   }
 
+  async function revalidateBlog(slug?: string) {
+    await fetch("/api/revalidate/blog", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ slug }),
+    }).catch(() => {});
+  }
+
   async function save(e: React.FormEvent) {
     e.preventDefault();
     setSaving(true);
@@ -66,8 +74,14 @@ export default function SuperadminBlogPage() {
     const url = editing ? `/api/superadmin/blog/${editing.id}` : "/api/superadmin/blog";
     const method = editing ? "PATCH" : "POST";
     const res = await fetch(url, { method, headers: { "Content-Type": "application/json" }, body: JSON.stringify(form) });
-    if (res.ok) { setShowForm(false); await load(); }
-    else { const d = await res.json(); setError(d.error ?? "Erreur"); }
+    if (res.ok) {
+      const saved = await res.json();
+      setShowForm(false);
+      if (saved.published) await revalidateBlog(saved.slug);
+      await load();
+    } else {
+      const d = await res.json(); setError(d.error ?? "Erreur");
+    }
     setSaving(false);
   }
 
@@ -77,6 +91,7 @@ export default function SuperadminBlogPage() {
       method: "PATCH", headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ published: !a.published }),
     });
+    await revalidateBlog(a.slug);
     await load();
     setActingId(null);
   }
@@ -85,6 +100,7 @@ export default function SuperadminBlogPage() {
     if (!confirm(`Supprimer « ${a.title} » ?`)) return;
     setActingId(a.id);
     await fetch(`/api/superadmin/blog/${a.id}`, { method: "DELETE" });
+    await revalidateBlog(a.slug);
     await load();
     setActingId(null);
   }

@@ -15,7 +15,6 @@ export default function NewsletterPage() {
   const [subscriberCount, setSubscriberCount] = useState<number | null>(null);
   const [campaigns, setCampaigns] = useState<Campaign[]>([]);
   const [loading, setLoading] = useState(true);
-  const [plan, setPlan] = useState<string | null>(null);
 
   const [subject, setSubject] = useState("");
   const [bodyText, setBodyText] = useState("");
@@ -24,14 +23,14 @@ export default function NewsletterPage() {
   const [sendError, setSendError] = useState("");
 
   useEffect(() => {
-    Promise.all([
-      fetch("/api/dashboard/newsletter/campaigns").then((r) => r.json()),
-      fetch("/api/auth/restaurant").then((r) => r.json()),
-    ]).then(([d, rest]) => {
-      setSubscriberCount(d.subscriber_count ?? 0);
-      setCampaigns(d.campaigns ?? []);
-      setPlan(rest.plan ?? "free");
-    }).catch(() => {}).finally(() => setLoading(false));
+    fetch("/api/dashboard/newsletter/campaigns")
+      .then((r) => r.json())
+      .then((d) => {
+        setSubscriberCount(d.subscriber_count ?? 0);
+        setCampaigns(d.campaigns ?? []);
+      })
+      .catch(() => {})
+      .finally(() => setLoading(false));
   }, []);
 
   async function handleSend(e: React.FormEvent) {
@@ -76,7 +75,7 @@ export default function NewsletterPage() {
   const canSend = subject.trim().length > 0 && bodyText.trim().length > 0 && !sending && (subscriberCount ?? 0) > 0;
 
   return (
-    <PlanGate plan={plan} feature="Newsletter clients">
+    <PlanGate feature="Newsletter clients" requiredPlans={["pro"]}>
     <div className="max-w-3xl space-y-6">
       {/* Header */}
       <div>

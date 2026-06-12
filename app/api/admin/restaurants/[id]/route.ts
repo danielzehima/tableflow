@@ -20,7 +20,32 @@ export async function PATCH(
   }
 
   const { id } = await params;
-  const { plan, months } = await req.json();
+  const body = await req.json();
+
+  // ── Action suspension / réactivation ─────────────────────────────
+  if (body.action === "suspend" || body.action === "reactivate") {
+    const newStatus = body.action === "suspend" ? "suspended" : "active";
+    const updates: Record<string, unknown> = { status: newStatus };
+    if (body.action === "suspend") {
+      updates.suspension_reason = "admin";
+    } else {
+      // Réactivation : effacer le motif et les flags email pour repartir proprement
+      updates.suspension_reason = null;
+      updates.expiry_email_sent = false;
+      updates.trial_warning_sent = false;
+    }
+    const { data, error } = await supabase
+      .from("restaurants")
+      .update(updates)
+      .eq("id", id)
+      .select("id, name, plan, plan_expires_at, status, suspension_reason")
+      .single();
+    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json(data);
+  }
+
+  // ── Changement de plan ────────────────────────────────────────────
+  const { plan, months } = body;
 
   const validPlans = ["free", "starter", "pro"];
   if (!validPlans.includes(plan)) {
@@ -41,7 +66,7 @@ export async function PATCH(
     .from("restaurants")
     .update(update)
     .eq("id", id)
-    .select("id, name, plan, plan_expires_at")
+    .select("id, name, plan, plan_expires_at, status")
     .single();
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });

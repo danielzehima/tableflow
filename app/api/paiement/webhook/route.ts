@@ -58,10 +58,19 @@ export async function POST(req: Request) {
   // Abonnement : activer le plan du restaurant
   if (payment.plan && payment.plan !== "order") {
     const expiresAt = new Date();
-    expiresAt.setMonth(expiresAt.getMonth() + 1);
+    // Durée : 12 mois si annuel, 1 mois sinon
+    const months = (payment as { billing?: string }).billing === "yearly" ? 12 : 1;
+    expiresAt.setMonth(expiresAt.getMonth() + months);
     await supabase
       .from("restaurants")
-      .update({ plan: payment.plan, plan_expires_at: expiresAt.toISOString(), status: "active" })
+      .update({
+        plan: payment.plan,
+        plan_expires_at: expiresAt.toISOString(),
+        status: "active",
+        suspension_reason: null,
+        expiry_email_sent: false,
+        trial_warning_sent: false,
+      })
       .eq("id", payment.restaurant_id);
   }
 

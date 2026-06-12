@@ -1,5 +1,6 @@
 import { notFound } from "next/navigation";
 import { supabase } from "../lib/supabase-server";
+import { getSession } from "../lib/auth-server";
 import RestaurantPageClient from "./RestaurantPageClient";
 
 type Props = {
@@ -18,6 +19,11 @@ export default async function RestaurantPage({ params, searchParams }: Props) {
     .single();
 
   if (error || !restaurant) {
+    notFound();
+  }
+
+  // Restaurant suspendu : page 404 pour les visiteurs
+  if ((restaurant as { status?: string }).status === "suspended") {
     notFound();
   }
 
@@ -70,9 +76,26 @@ export default async function RestaurantPage({ params, searchParams }: Props) {
     primaryColor: restaurant.primary_color || "#f97316",
     welcomeMessage: restaurant.welcome_message || "",
     mapsUrl: restaurant.maps_url ?? "",
+    onlinePaymentEnabled: (restaurant as { online_payment_enabled?: boolean }).online_payment_enabled ?? false,
     images: (galleryData ?? []).map((i: { id: string; url: string }) => ({ id: i.id, url: i.url })),
     menu,
   };
 
-  return <RestaurantPageClient restaurant={restaurantData} tableParam={tableParam ?? ""} paidOrderId={paid === "1" ? (order_id ?? null) : null} />;
+  // Vérifie si le visiteur est un gérant/propriétaire de CE restaurant
+  const session = await getSession();
+  const dashboardRole =
+    session &&
+    session.restaurantId === restaurant.id &&
+    (session.role === "owner" || session.role === "manager")
+      ? session.role
+      : null;
+
+  return (
+    <RestaurantPageClient
+      restaurant={restaurantData}
+      tableParam={tableParam ?? ""}
+      paidOrderId={paid === "1" ? (order_id ?? null) : null}
+      dashboardRole={dashboardRole ?? undefined}
+    />
+  );
 }

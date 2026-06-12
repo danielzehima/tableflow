@@ -9,6 +9,7 @@ import {
   canAccessReservations, canAccessKitchen,
 } from "../../lib/auth";
 import type { Role } from "../../lib/auth";
+import type { PlanInfo } from "../../lib/plan-utils";
 
 type SidebarProps = {
   isOpen?: boolean;
@@ -20,6 +21,7 @@ type SidebarProps = {
   initials: string;
   restaurantPlan?: "free" | "starter" | "pro";
   planExpiresAt?: string | null;
+  planInfo?: PlanInfo;
 };
 
 const PLAN_BADGE: Record<string, { label: string; color: string }> = {
@@ -30,7 +32,7 @@ const PLAN_BADGE: Record<string, { label: string; color: string }> = {
 
 const CHAT_LAST_SEEN_KEY = "chat_last_seen";
 
-export default function Sidebar({ isOpen = false, onClose, restaurantName, restaurantSlug, userName, userRole, initials, restaurantPlan = "free", planExpiresAt }: SidebarProps) {
+export default function Sidebar({ isOpen = false, onClose, restaurantName, restaurantSlug, userName, userRole, initials, restaurantPlan = "free", planExpiresAt, planInfo }: SidebarProps) {
   const pathname = usePathname();
   const pathnameRef = useRef(pathname);
   const [chatUnread, setChatUnread] = useState(0);
@@ -98,8 +100,9 @@ export default function Sidebar({ isOpen = false, onClose, restaurantName, resta
     { href: "/dashboard/menu",             icon: MenuIcon,     label: "Menu digital",     show: canManageMenu(userRole) },        // 10
     { href: "/dashboard/tables",           icon: QrIcon,       label: "Tables & QR",      show: canManageTeam(userRole) },        // 11
     { href: "/dashboard/messages",         icon: ChatIcon,     label: "Messages",         show: canViewStats(userRole) },         // chat
-    { href: "/dashboard/equipe",           icon: TeamIcon,     label: "Équipe",           show: canManageTeam(userRole) },        // owner
-    { href: "/dashboard/abonnement",       icon: CreditIcon,   label: "Abonnement",       show: canManageTeam(userRole) },        // 12
+    { href: "/dashboard/equipe",            icon: TeamIcon,       label: "Équipe",              show: canManageTeam(userRole) },
+    { href: "/dashboard/paiement-en-ligne",icon: PaymentIcon,   label: "Paiement en ligne",  show: canManageTeam(userRole) },
+    { href: "/dashboard/abonnement",       icon: CreditIcon,    label: "Abonnement",          show: canManageTeam(userRole) },
     { href: "/dashboard/parametres",       icon: SettingsIcon, label: "Paramètres",       show: canManageTeam(userRole) },        // 13
   ].filter((item) => item.show);
 
@@ -136,16 +139,44 @@ export default function Sidebar({ isOpen = false, onClose, restaurantName, resta
           </div>
         </div>
 
-        <div className="mt-2.5 text-emerald-300 text-xs truncate">{restaurantName}</div>
-        <div className="mt-1.5 flex items-center gap-2">
-          <Link href="/dashboard/abonnement" onClick={onClose}
-            className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${PLAN_BADGE[restaurantPlan]?.color ?? PLAN_BADGE.free.color}`}>
-            {PLAN_BADGE[restaurantPlan]?.label ?? "Gratuit"}
-          </Link>
-          {planExpiresAt && restaurantPlan !== "free" && (
-            <span className="text-[10px] text-slate-500">
-              exp. {new Date(planExpiresAt).toLocaleDateString("fr-FR", { day: "numeric", month: "short" })}
-            </span>
+        <div className="mt-2 text-emerald-300 text-xs truncate">{restaurantName}</div>
+
+        {/* Badge plan / essai — pleine largeur sous le nom du restaurant */}
+        <div className="mt-2">
+          {planInfo?.isInTrial ? (
+            <Link
+              href="/dashboard/abonnement"
+              onClick={onClose}
+              className="flex items-center justify-between w-full bg-gradient-to-r from-orange-600 to-amber-500 rounded-xl px-3 py-2 group hover:opacity-90 transition-opacity"
+            >
+              <div className="flex items-center gap-2 min-w-0">
+                <span className="text-base shrink-0">🎁</span>
+                <div className="min-w-0">
+                  <p className="text-white text-[11px] font-bold leading-tight">Essai gratuit</p>
+                  <p className="text-orange-200 text-[10px] leading-tight">
+                    {planInfo.trialDaysLeft} jour{planInfo.trialDaysLeft > 1 ? "s" : ""} restant{planInfo.trialDaysLeft > 1 ? "s" : ""}
+                  </p>
+                </div>
+              </div>
+              <span className="text-orange-200 text-[10px] font-semibold shrink-0 group-hover:text-white">
+                Choisir →
+              </span>
+            </Link>
+          ) : (
+            <div className="flex items-center gap-2">
+              <Link
+                href="/dashboard/abonnement"
+                onClick={onClose}
+                className={`text-[10px] font-bold px-2.5 py-1 rounded-full ${PLAN_BADGE[restaurantPlan]?.color ?? PLAN_BADGE.free.color}`}
+              >
+                {PLAN_BADGE[restaurantPlan]?.label ?? "Gratuit"}
+              </Link>
+              {planExpiresAt && restaurantPlan !== "free" && (
+                <span className="text-[10px] text-slate-500">
+                  exp. {new Date(planExpiresAt).toLocaleDateString("fr-FR", { day: "numeric", month: "short" })}
+                </span>
+              )}
+            </div>
           )}
         </div>
       </div>
@@ -253,6 +284,9 @@ function MailIcon({ className }: { className?: string }) {
 }
 function ClockIcon({ className }: { className?: string }) {
   return <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>;
+}
+function PaymentIcon({ className }: { className?: string }) {
+  return <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z" /></svg>;
 }
 function EventIcon({ className }: { className?: string }) {
   return <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z" /></svg>;

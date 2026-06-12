@@ -31,25 +31,46 @@ export async function POST(req: Request) {
 
   const restaurantName = restaurant?.name ?? "Le restaurant";
 
+  // Dédupliquer les emails (un client peut avoir plusieurs commandes)
+  const uniqueRecipients = Array.from(
+    new Map(
+      customers
+        .filter((c) => c.email && c.email.includes("@"))
+        .map((c) => [c.email!.toLowerCase().trim(), c])
+    ).values()
+  );
+
+  if (uniqueRecipients.length === 0) {
+    return NextResponse.json({ error: "Aucun abonné avec une adresse email valide" }, { status: 400 });
+  }
+
   let sent = 0;
   let failed = 0;
   const errors: string[] = [];
 
-  for (const customer of customers) {
-    if (!customer.email) continue;
-    const result = await sendNewsletterEmail({
-      to: customer.email,
-      toName: customer.name || undefined,
-      subject: subject.trim(),
-      bodyText: body_text.trim(),
-      restaurantName,
-    });
-    if (result.ok) {
-      sent++;
-    } else {
-      failed++;
-      if (result.error && !errors.includes(result.error)) {
-        errors.push(result.error);
+  // Envoi par lots parallèles pour éviter le timeout serverless
+  const BATCH_SIZE = 5;
+  for (let i = 0; i < uniqueRecipients.length; i += BATCH_SIZE) {
+    const batch = uniqueRecipients.slice(i, i + BATCH_SIZE);
+    const results = await Promise.all(
+      batch.map((customer) =>
+        sendNewsletterEmail({
+          to: customer.email!,
+          toName: customer.name || undefined,
+          subject: subject.trim(),
+          bodyText: body_text.trim(),
+          restaurantName,
+        })
+      )
+    );
+    for (const result of results) {
+      if (result.ok) {
+        sent++;
+      } else {
+        failed++;
+        if (result.error && !errors.includes(result.error)) {
+          errors.push(result.error);
+        }
       }
     }
   }

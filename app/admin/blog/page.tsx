@@ -95,6 +95,15 @@ export default function AdminBlogPage() {
     setShowForm(true);
   }
 
+  /** Vide le cache Next.js pour la liste et l'article donné */
+  async function revalidateBlog(slug?: string) {
+    await fetch("/api/revalidate/blog", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ slug }),
+    }).catch(() => {});
+  }
+
   async function save(e: React.FormEvent) {
     e.preventDefault();
     setSaving(true);
@@ -107,7 +116,10 @@ export default function AdminBlogPage() {
       body: JSON.stringify(form),
     });
     if (res.ok) {
+      const saved = await res.json();
       setShowForm(false);
+      // Revalider le cache si l'article est publié
+      if (saved.published) await revalidateBlog(saved.slug);
       await load();
     } else {
       const d = await res.json();
@@ -123,6 +135,8 @@ export default function AdminBlogPage() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ published: !a.published }),
     });
+    // Revalider immédiatement le cache pour que l'article apparaisse/disparaisse
+    await revalidateBlog(a.slug);
     await load();
     setActingId(null);
   }
@@ -131,6 +145,8 @@ export default function AdminBlogPage() {
     if (!confirm(`Supprimer « ${a.title} » ?`)) return;
     setActingId(a.id);
     await fetch(`/api/admin/blog/${a.id}`, { method: "DELETE" });
+    // Revalider après suppression
+    await revalidateBlog(a.slug);
     await load();
     setActingId(null);
   }

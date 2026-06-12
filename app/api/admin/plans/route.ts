@@ -18,7 +18,7 @@ export async function GET() {
 
   const { data, error } = await supabase
     .from("plan_settings")
-    .select("plan, label, price, currency, description, features, highlight, badge, cta_text, cta_href, sort_order")
+    .select("plan, label, price, price_yearly, currency, description, features, highlight, badge, cta_text, cta_href, sort_order")
     .order("sort_order");
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });

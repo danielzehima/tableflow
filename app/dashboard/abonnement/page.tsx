@@ -1,9 +1,12 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, Suspense } from "react";
+import { useSearchParams } from "next/navigation";
+
+type Billing = "monthly" | "yearly";
 
 type PlanSetting = {
-  plan: string; label: string; price: number; currency: string;
+  plan: string; label: string; price: number; price_yearly: number; currency: string;
   description: string; features: string[]; highlight: boolean; badge: string | null;
 };
 
@@ -35,11 +38,30 @@ function fmt(d: string) {
   return new Date(d).toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric" });
 }
 
+// ── Wrapper Suspense requis par Next.js 16 pour useSearchParams ──
 export default function AbonnementPage() {
+  return (
+    <Suspense fallback={
+      <div className="flex items-center justify-center h-64">
+        <div className="w-8 h-8 border-2 border-orange-500 border-t-transparent rounded-full animate-spin" />
+      </div>
+    }>
+      <AbonnementContent />
+    </Suspense>
+  );
+}
+
+function AbonnementContent() {
+  const searchParams = useSearchParams();
+  const reason   = searchParams.get("reason");    // "trial_ended" | "upgrade_required"
+  const feature  = searchParams.get("feature");   // ex: "Commandes en ligne"
+  const required = searchParams.get("required");  // "starter" | "pro"
+
   const [plans, setPlans] = useState<PlanSetting[]>([]);
   const [payments, setPayments] = useState<Payment[]>([]);
   const [restaurant, setRestaurant] = useState<Restaurant | null>(null);
   const [loading, setLoading] = useState(true);
+  const [billing, setBilling] = useState<Billing>("monthly");
   const [selectedPlan, setSelectedPlan] = useState<PlanSetting | null>(null);
   const [method, setMethod] = useState<string>("wave");
   const [phone, setPhone] = useState("");
@@ -69,7 +91,7 @@ export default function AbonnementPage() {
     const res = await fetch("/api/paiement", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ plan: selectedPlan.plan }),
+      body: JSON.stringify({ plan: selectedPlan.plan, billing }),
     });
 
     if (res.ok) {
@@ -103,6 +125,53 @@ export default function AbonnementPage() {
 
   return (
     <div className="max-w-4xl space-y-8">
+
+      {/* ── Bannière fin d'essai ──────────────────────────────────── */}
+      {reason === "trial_ended" && (
+        <div className="bg-gradient-to-br from-orange-500 to-amber-500 rounded-2xl p-6 text-white shadow-lg">
+          <div className="flex items-start gap-4">
+            <div className="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center shrink-0 text-2xl">
+              ⏰
+            </div>
+            <div className="flex-1 min-w-0">
+              <h2 className="text-xl font-extrabold leading-tight">Votre période d&apos;essai est terminée</h2>
+              <p className="text-orange-100 text-sm mt-1.5 leading-relaxed">
+                Vous avez profité de <strong className="text-white">14 jours d&apos;accès complet</strong> à TableFlow.
+                Pour continuer à utiliser le dashboard et toutes ses fonctionnalités,
+                choisissez le plan qui correspond à votre activité.
+              </p>
+              <div className="mt-3 flex flex-wrap gap-2">
+                {["Commandes en ligne", "QR codes", "Analytics", "Avis clients", "Événements"].map((f) => (
+                  <span key={f} className="text-[11px] font-semibold bg-white/20 px-2.5 py-1 rounded-full">
+                    ✓ {f}
+                  </span>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Bannière fonctionnalité verrouillée ───────────────────── */}
+      {reason === "upgrade_required" && feature && (
+        <div className="bg-amber-50 border border-amber-200 rounded-2xl p-5 flex items-start gap-4">
+          <div className="w-10 h-10 bg-amber-100 rounded-xl flex items-center justify-center shrink-0">
+            <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5 text-amber-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+            </svg>
+          </div>
+          <div>
+            <p className="font-bold text-amber-800 text-sm">
+              « {feature} » requiert le plan{" "}
+              <span className="text-orange-600">{required === "pro" ? "Pro" : "Starter"}</span>
+            </p>
+            <p className="text-amber-700 text-xs mt-1 leading-relaxed">
+              Souscrivez au plan adapté pour débloquer cette fonctionnalité et bien d&apos;autres.
+            </p>
+          </div>
+        </div>
+      )}
+
       {/* Header */}
       <div>
         <h1 className="text-2xl font-bold text-slate-900">Abonnement</h1>
@@ -135,15 +204,58 @@ export default function AbonnementPage() {
 
       {/* Plans */}
       <div>
-        <h2 className="text-base font-bold text-slate-800 mb-4">Choisir un plan</h2>
+        <div className="flex items-center justify-between flex-wrap gap-3 mb-5">
+          <h2 className="text-base font-bold text-slate-800">Choisir un plan</h2>
+
+          {/* Toggle mensuel / annuel */}
+          <div className="flex items-center gap-3 bg-slate-100 rounded-xl px-4 py-2">
+            <button
+              onClick={() => setBilling("monthly")}
+              className={`text-xs font-semibold transition-colors ${billing === "monthly" ? "text-slate-900" : "text-slate-400 hover:text-slate-600"}`}
+            >
+              Mensuel
+            </button>
+            <button
+              onClick={() => setBilling(billing === "yearly" ? "monthly" : "yearly")}
+              className={`relative w-10 h-5 rounded-full transition-colors duration-300 focus:outline-none ${billing === "yearly" ? "bg-orange-500" : "bg-slate-300"}`}
+            >
+              <span className={`absolute top-0.5 w-4 h-4 bg-white rounded-full shadow transition-transform duration-300 ${billing === "yearly" ? "translate-x-5" : "translate-x-0.5"}`} />
+            </button>
+            <div className="flex items-center gap-1.5">
+              <button
+                onClick={() => setBilling("yearly")}
+                className={`text-xs font-semibold transition-colors ${billing === "yearly" ? "text-slate-900" : "text-slate-400 hover:text-slate-600"}`}
+              >
+                Annuel
+              </button>
+              <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full transition-all ${billing === "yearly" ? "bg-emerald-100 text-emerald-700" : "opacity-0 pointer-events-none"}`}>
+                −20%
+              </span>
+            </div>
+          </div>
+        </div>
+
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           {plans.map((plan) => {
             const isCurrent = plan.plan === currentPlan;
+            const isPaid    = plan.price > 0;
+            const isYearly  = billing === "yearly" && isPaid;
+            const monthlyEquiv = isYearly && plan.price_yearly > 0
+              ? Math.round(plan.price_yearly / 12)
+              : plan.price;
+            const yearlySavings = isYearly && plan.price_yearly > 0
+              ? plan.price * 12 - plan.price_yearly
+              : 0;
+            const discountPct = isPaid && plan.price > 0 && plan.price_yearly > 0
+              ? Math.round((1 - plan.price_yearly / (plan.price * 12)) * 100)
+              : 0;
+
             return (
               <div key={plan.plan}
                 className={`relative bg-white rounded-2xl border-2 p-5 flex flex-col gap-4 transition-all ${
                   plan.highlight ? "border-orange-400 shadow-lg shadow-orange-50" : "border-slate-100"
                 } ${isCurrent ? "ring-2 ring-orange-500/30" : ""}`}>
+
                 {plan.badge && (
                   <span className="absolute -top-3 left-1/2 -translate-x-1/2 bg-orange-500 text-white text-[10px] font-bold px-3 py-1 rounded-full whitespace-nowrap">
                     {plan.badge}
@@ -154,14 +266,44 @@ export default function AbonnementPage() {
                     Plan actuel
                   </span>
                 )}
+                {/* Badge réduction annuelle */}
+                {isYearly && discountPct > 0 && (
+                  <span className="absolute top-3 right-3 bg-emerald-500 text-white text-[10px] font-extrabold px-2 py-0.5 rounded-full">
+                    −{discountPct}%
+                  </span>
+                )}
+
                 <div>
                   <h3 className="font-bold text-slate-900">{plan.label}</h3>
                   <p className="text-green-700 text-xs mt-0.5">{plan.description}</p>
                 </div>
-                <div className="text-2xl font-extrabold text-slate-900">
-                  {plan.price === 0 ? "Gratuit" : `${plan.price.toLocaleString("fr-FR")} ${plan.currency}`}
-                  {plan.price > 0 && <span className="text-sm font-normal text-green-700">/mois</span>}
+
+                {/* Prix dynamique */}
+                <div>
+                  <div className="text-2xl font-extrabold text-slate-900">
+                    {!isPaid ? "Gratuit" : (
+                      <>
+                        {monthlyEquiv.toLocaleString("fr-FR")}{" "}
+                        <span className="text-sm font-normal text-slate-400">{plan.currency}/mois</span>
+                      </>
+                    )}
+                  </div>
+                  {isPaid && (
+                    <div className="text-xs text-slate-400 mt-0.5 min-h-[16px]">
+                      {isYearly ? (
+                        <>
+                          Facturé {plan.price_yearly.toLocaleString("fr-FR")} {plan.currency}/an
+                          {yearlySavings > 0 && (
+                            <span className="text-emerald-600 font-semibold ml-1">
+                              (éco. {yearlySavings.toLocaleString("fr-FR")} {plan.currency})
+                            </span>
+                          )}
+                        </>
+                      ) : "Facturé chaque mois"}
+                    </div>
+                  )}
                 </div>
+
                 <ul className="space-y-1.5 flex-1">
                   {plan.features.map((f, i) => (
                     <li key={i} className="flex items-start gap-2 text-xs text-slate-600">
@@ -169,16 +311,17 @@ export default function AbonnementPage() {
                     </li>
                   ))}
                 </ul>
+
                 <button
-                  onClick={() => { if (!isCurrent && plan.price > 0) setSelectedPlan(plan); }}
-                  disabled={isCurrent || plan.price === 0}
+                  onClick={() => { if (!isCurrent && isPaid) setSelectedPlan(plan); }}
+                  disabled={isCurrent || !isPaid}
                   className={`w-full py-2.5 rounded-xl text-sm font-semibold transition-colors ${
                     isCurrent ? "bg-emerald-100 text-emerald-700 cursor-default"
-                    : plan.price === 0 ? "bg-slate-100 text-green-700 cursor-default"
+                    : !isPaid ? "bg-slate-100 text-green-700 cursor-default"
                     : plan.highlight ? "bg-orange-500 hover:bg-orange-600 text-white"
                     : "border-2 border-orange-500 text-orange-600 hover:bg-orange-50"
                   }`}>
-                  {isCurrent ? "Plan actuel" : plan.price === 0 ? "Gratuit" : "Souscrire"}
+                  {isCurrent ? "Plan actuel" : !isPaid ? "Gratuit" : `Souscrire${isYearly ? " (annuel)" : ""}`}
                 </button>
               </div>
             );
@@ -244,7 +387,17 @@ export default function AbonnementPage() {
                   <div className="flex items-center justify-between mb-5">
                     <div>
                       <h2 className="text-lg font-bold text-slate-900">Confirmer l&apos;abonnement</h2>
-                      <p className="text-slate-500 text-sm">Plan <strong>{selectedPlan.label}</strong> — {selectedPlan.price.toLocaleString("fr-FR")} {selectedPlan.currency}/mois</p>
+                      {billing === "yearly" && selectedPlan.price_yearly > 0 ? (
+                        <p className="text-slate-500 text-sm">
+                          Plan <strong>{selectedPlan.label}</strong> Annuel —{" "}
+                          <strong className="text-slate-700">{selectedPlan.price_yearly.toLocaleString("fr-FR")} {selectedPlan.currency}</strong>/an
+                          <span className="ml-1.5 text-emerald-600 text-xs font-semibold">
+                            (soit {Math.round(selectedPlan.price_yearly / 12).toLocaleString("fr-FR")} {selectedPlan.currency}/mois)
+                          </span>
+                        </p>
+                      ) : (
+                        <p className="text-slate-500 text-sm">Plan <strong>{selectedPlan.label}</strong> — {selectedPlan.price.toLocaleString("fr-FR")} {selectedPlan.currency}/mois</p>
+                      )}
                     </div>
                     <button onClick={closeModal} className="text-slate-400 hover:text-slate-600 p-1">
                       <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -281,7 +434,7 @@ export default function AbonnementPage() {
                       Annuler
                     </button>
                     <button onClick={pay} className="flex-1 bg-orange-500 hover:bg-orange-600 text-white font-bold py-3 rounded-xl text-sm transition-colors">
-                      Payer {selectedPlan.price.toLocaleString("fr-FR")} {selectedPlan.currency}
+                      Payer {(billing === "yearly" && selectedPlan.price_yearly > 0 ? selectedPlan.price_yearly : selectedPlan.price).toLocaleString("fr-FR")} {selectedPlan.currency}
                     </button>
                   </div>
 

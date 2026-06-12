@@ -52,7 +52,6 @@ export default function Hero() {
 
             {/* Titre */}
             <h1 className="text-4xl sm:text-5xl lg:text-6xl xl:text-7xl font-extrabold leading-[1.1] tracking-tight mb-5 md:mb-6 drop-shadow-lg">
-              TableFlow :{" "}
               <span className="text-transparent bg-clip-text bg-gradient-to-r from-orange-400 to-amber-300">
                 Libérez le potentiel
               </span>{" "}

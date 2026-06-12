@@ -1,6 +1,9 @@
 import Link from "next/link";
 import { supabase } from "../lib/supabase-server";
 
+// Revalidation automatique toutes les 60s + immédiate via /api/revalidate/blog
+export const revalidate = 60;
+
 type Article = {
   id: string; title: string; slug: string; excerpt: string;
   category: string; cover_emoji: string; author: string;

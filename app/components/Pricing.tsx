@@ -1,41 +1,45 @@
 import { supabase } from "../lib/supabase-server";
 import PricingCards from "./PricingCards";
 
-type PlanSetting = {
-  plan: string;
-  label: string;
-  price: number;
-  currency: string;
-  description: string;
-  features: string[];
-  highlight: boolean;
-  badge: string | null;
-  cta_text: string;
-  cta_href: string;
-};
+import type { PlanSetting } from "./PricingCards";
 
+// ── Fallback synchronisé avec plan-utils.ts ──────────────────────
 const FALLBACK: PlanSetting[] = [
   {
-    plan: "starter", label: "Starter", price: 9900, currency: "FCFA",
-    description: "Pour démarrer votre présence en ligne",
-    features: ["Page publique", "Menu en ligne", "Réservations en ligne", "Support par email"],
-    highlight: false, badge: null, cta_text: "Commencer", cta_href: "/inscription",
+    plan: "free", label: "Gratuit", price: 0, price_yearly: 0, currency: "FCFA",
+    description: "Testez TableFlow sans engagement, 14 jours en accès complet",
+    features: ["14 jours d'essai gratuit — accès complet", "Page publique du restaurant", "Menu en ligne avec photos", "5 réservations / mois", "QR code de table basique"],
+    highlight: false, badge: null, cta_text: "Commencer gratuitement", cta_href: "/inscription",
   },
   {
-    plan: "pro", label: "Pro", price: 24900, currency: "FCFA",
-    description: "La solution complète pour les restaurants actifs",
-    features: ["Tout Starter", "Commandes en ligne", "Stats avancées", "Support prioritaire"],
+    plan: "starter", label: "Starter", price: 9900, price_yearly: 118800, currency: "FCFA",
+    description: "Tout ce qu'il faut pour digitaliser votre restaurant",
+    features: ["Tout du plan Gratuit", "Réservations illimitées", "Commandes en ligne", "Tables & QR codes illimités", "Heures creuses & réductions auto", "Codes promo", "Avis clients & note publique", "Analytics & statistiques", "Messagerie visiteurs en temps réel", "Événements & agenda", "Personnalisation (couleurs, logo)", "Support par email"],
+    highlight: false, badge: null, cta_text: "Démarrer l'essai gratuit", cta_href: "/inscription",
+  },
+  {
+    plan: "pro", label: "Pro", price: 24900, price_yearly: 238080, currency: "FCFA",
+    description: "La solution complète pour les restaurants ambitieux",
+    features: ["Tout du plan Starter", "Programme de fidélité clients", "Newsletter & campagnes email", "Gestion d'équipe multi-rôles", "Accès serveur & cuisinier dédié", "Support prioritaire"],
     highlight: true, badge: "Le plus populaire", cta_text: "Démarrer l'essai gratuit", cta_href: "/inscription",
   },
 ];
 
 export default async function Pricing() {
-  const { data } = await supabase
-    .from("plan_settings")
-    .select("plan, label, price, currency, description, features, highlight, badge, cta_text, cta_href")
-    .order("sort_order");
+  let plans: PlanSetting[] = FALLBACK;
 
-  const plans: PlanSetting[] = data && data.length > 0 ? data : FALLBACK;
+  try {
+    const { data, error } = await supabase
+      .from("plan_settings")
+      .select("plan, label, price, price_yearly, currency, description, features, highlight, badge, cta_text, cta_href")
+      .order("sort_order");
+
+    if (!error && data && data.length > 0) {
+      plans = data as PlanSetting[];
+    }
+  } catch {
+    // Supabase injoignable (réseau, build, env vars) → on affiche le FALLBACK
+  }
 
   return (
     <section id="pricing" className="py-16 md:py-24 px-4 md:px-6 bg-slate-50">

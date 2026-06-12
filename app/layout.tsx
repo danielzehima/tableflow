@@ -40,7 +40,31 @@ export default function RootLayout({
       <body className="antialiased">
         {children}
         <script dangerouslySetInnerHTML={{
-          __html: `if ('serviceWorker' in navigator) { navigator.serviceWorker.register('/sw.js'); }`
+          __html: `if ('serviceWorker' in navigator) {
+            window.addEventListener('load', function () {
+              navigator.serviceWorker.register('/sw.js').then(function (reg) {
+                // Vérifier les mises à jour du SW à chaque chargement
+                reg.update();
+                reg.addEventListener('updatefound', function () {
+                  var nw = reg.installing;
+                  if (!nw) return;
+                  nw.addEventListener('statechange', function () {
+                    // Nouveau SW prêt + un SW contrôle déjà la page => activer tout de suite
+                    if (nw.state === 'installed' && navigator.serviceWorker.controller) {
+                      nw.postMessage('SKIP_WAITING');
+                    }
+                  });
+                });
+              }).catch(function () {});
+              // Recharger une seule fois quand le nouveau SW prend le contrôle
+              var refreshing = false;
+              navigator.serviceWorker.addEventListener('controllerchange', function () {
+                if (refreshing) return;
+                refreshing = true;
+                window.location.reload();
+              });
+            });
+          }`
         }} />
       </body>
     </html>

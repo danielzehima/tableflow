@@ -1,3 +1,5 @@
+import OfflineReconnect from "./OfflineReconnect";
+
 export const dynamic = "force-static";
 
 export const metadata = {
@@ -16,14 +18,10 @@ export default function OfflinePage() {
         </div>
         <h1 className="text-xl font-bold text-slate-900 mb-2">Vous êtes hors ligne</h1>
         <p className="text-slate-600 text-sm mb-6">
-          La connexion internet est indisponible. Vérifiez votre réseau puis réessayez.
+          La connexion internet est indisponible. La page se rechargera
+          automatiquement dès le retour du réseau.
         </p>
-        <a
-          href="/dashboard"
-          className="inline-block bg-orange-500 hover:bg-orange-600 text-white font-semibold px-5 py-2.5 rounded-lg transition-colors"
-        >
-          Réessayer
-        </a>
+        <OfflineReconnect />
       </div>
     </main>
   );

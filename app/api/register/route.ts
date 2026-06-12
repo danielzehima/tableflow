@@ -57,6 +57,10 @@ export async function POST(request: Request) {
     slug = `${slug}-${Date.now().toString().slice(-4)}`;
   }
 
+  // Calcul de la fin d'essai (14 jours à partir de maintenant)
+  const trialEndsAt = new Date();
+  trialEndsAt.setDate(trialEndsAt.getDate() + 14);
+
   // Create the restaurant
   const { data: rest, error: restError } = await supabase
     .from("restaurants")
@@ -71,6 +75,8 @@ export async function POST(request: Request) {
       hours: "Lun-Sam : 12h-22h",
       cuisine: "À définir",
       cover_image: "",
+      plan: "free",
+      status: "active",
     })
     .select("id, slug, name")
     .single();

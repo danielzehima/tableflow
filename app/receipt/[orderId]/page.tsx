@@ -59,11 +59,11 @@ export default async function ReceiptPage({ params }: { params: Promise<{ orderI
   const items = parseItems(order.items as string);
   const isPaid = order.status === "paid" || !!payment;
 
-  // Récupère les prix du menu pour afficher le montant par ligne
+  // Récupère les prix du menu via les catégories du restaurant
   const { data: menuItems } = await supabase
     .from("menu_items")
-    .select("name, price")
-    .eq("restaurant_id", order.restaurant_id);
+    .select("name, price, menu_categories!inner(restaurant_id)")
+    .eq("menu_categories.restaurant_id", order.restaurant_id);
 
   const priceMap = new Map<string, number>();
   (menuItems ?? []).forEach((mi: { name: string; price: number }) =>
