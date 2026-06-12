@@ -3,7 +3,12 @@
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
-import { CURRENCIES, type Currency } from "../../lib/currency";
+import { CURRENCIES, convertAmount, formatMoney, type Currency } from "../../lib/currency";
+
+/** Exemple de conversion "2 500 FCFA → X" pour la boîte de confirmation. */
+function convertExample(to: Currency): string {
+  return formatMoney(convertAmount(2500, "XOF", to), to);
+}
 
 type Restaurant = {
   id: string;
@@ -150,6 +155,21 @@ export default function ParametresPage() {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!restaurant) return;
+
+    // ── Changement de devise → prévenir que les prix seront convertis ──
+    const currencyChanged = !!form.currency && form.currency !== restaurant.currency;
+    if (currencyChanged) {
+      const from = CURRENCIES[restaurant.currency]?.symbol ?? restaurant.currency;
+      const to = CURRENCIES[form.currency as Currency]?.symbol ?? form.currency;
+      const ok = confirm(
+        `Changer la devise de ${from} vers ${to} convertira automatiquement TOUS vos prix ` +
+        `(plats, événements, codes promo) au taux en vigueur.\n\n` +
+        `Exemple : 2 500 FCFA ≈ ${convertExample(form.currency as Currency)}.\n\n` +
+        `Les commandes déjà passées ne sont pas modifiées. Continuer ?`
+      );
+      if (!ok) return;
+    }
+
     setSaving(true);
     setError("");
 
@@ -161,6 +181,8 @@ export default function ParametresPage() {
 
     if (res.ok) {
       setSaved(true);
+      // Mémoriser la nouvelle devise pour ne pas re-convertir au prochain save
+      setRestaurant((prev) => prev ? { ...prev, currency: form.currency as Currency } : prev);
     } else {
       const data = await res.json();
       setError(data.error || "Erreur lors de la sauvegarde");
@@ -281,7 +303,8 @@ export default function ParametresPage() {
               ))}
             </select>
             <p className="text-xs text-slate-400 mt-1">
-              Les prix sont saisis en nombres entiers. La devise des abonnements TableFlow reste le FCFA.
+              Changer la devise convertit automatiquement tous vos prix au taux en vigueur
+              (1 € = 655,957 FCFA). La facturation TableFlow reste en FCFA.
             </p>
           </div>
         </div>

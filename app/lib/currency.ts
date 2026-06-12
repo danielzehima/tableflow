@@ -27,6 +27,34 @@ export function asCurrency(value: string | null | undefined): Currency {
   return value === "EUR" || value === "USD" || value === "XOF" ? value : DEFAULT_CURRENCY;
 }
 
+// ================================================================
+// Conversion entre devises
+// Valeur d'1 unité de la devise, exprimée en FCFA (XOF).
+//  - EUR : taux FIXE officiel BCEAO (1 € = 655,957 FCFA) — ne change jamais.
+//  - USD : taux FLOTTANT (approximatif). Ajustable ici si besoin.
+// ================================================================
+export const XOF_PER_UNIT: Record<Currency, number> = {
+  XOF: 1,
+  EUR: 655.957,
+  USD: 600,
+};
+
+/**
+ * Convertit un montant d'une devise vers une autre.
+ * Les prix étant stockés en nombres entiers, le résultat est arrondi.
+ * Ex : convertAmount(2500, "XOF", "EUR") → 4   (2500 / 655,957 ≈ 3,81)
+ *      convertAmount(4, "EUR", "XOF")    → 2624 (4 × 655,957)
+ */
+export function convertAmount(
+  amount: number,
+  from: Currency,
+  to: Currency
+): number {
+  if (from === to || !Number.isFinite(amount)) return Math.round(amount) || 0;
+  const xof = amount * XOF_PER_UNIT[from];
+  return Math.round(xof / XOF_PER_UNIT[to]);
+}
+
 /** Symbole court de la devise (pour les affichages où le nombre est séparé). */
 export function currencySymbol(currency: string | null | undefined): string {
   return CURRENCIES[asCurrency(currency)].symbol;

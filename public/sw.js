@@ -4,7 +4,7 @@
 //             cache-first pour les assets statiques.
 // ================================================================
 
-const CACHE = "tableflow-v3";
+const CACHE = "tableflow-v4";
 const OFFLINE_URL = "/offline";
 
 // Ressources critiques pré-mises en cache à l'installation
