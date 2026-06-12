@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useMoney } from "../components/CurrencyContext";
+import { useMoney, useCurrency } from "../components/CurrencyContext";
+import { currencySymbol } from "../../lib/currency";
 
 type MenuItem = {
   id: string;
@@ -39,6 +40,8 @@ const EMPTY_FORM = {
 
 export default function MenuPage() {
   const money = useMoney();
+  const currency = useCurrency();
+  const priceStep = currency === "XOF" ? 50 : 0.01;
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
   const [restaurantId, setRestaurantId] = useState("");
@@ -447,9 +450,9 @@ export default function MenuPage() {
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1.5">Prix (FCFA) <span className="text-red-400">*</span></label>
+                <label className="block text-sm font-medium text-slate-700 mb-1.5">Prix ({currencySymbol(currency)}) <span className="text-red-400">*</span></label>
                 <input
-                  type="number" min="0" step="50"
+                  type="number" min="0" step={priceStep}
                   value={form.price}
                   onChange={(e) => setForm({ ...form, price: e.target.value })}
                   required
@@ -539,9 +542,9 @@ export default function MenuPage() {
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1.5">Prix (FCFA) <span className="text-red-400">*</span></label>
+                <label className="block text-sm font-medium text-slate-700 mb-1.5">Prix ({currencySymbol(currency)}) <span className="text-red-400">*</span></label>
                 <input
-                  type="number" min="0" step="50"
+                  type="number" min="0" step={priceStep}
                   value={editForm.price}
                   onChange={(e) => setEditForm({ ...editForm, price: e.target.value })}
                   required

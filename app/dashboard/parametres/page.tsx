@@ -150,6 +150,16 @@ export default function ParametresPage() {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!restaurant) return;
+
+    // Modèle natif : changer la devise ne convertit PAS les prix existants.
+    if (form.currency && form.currency !== restaurant.currency) {
+      const ok = confirm(
+        "Changer la devise ne convertit PAS vos prix existants : ils seront affichés " +
+        "tels quels dans la nouvelle devise. Vérifiez vos prix après le changement.\n\nContinuer ?"
+      );
+      if (!ok) return;
+    }
+
     setSaving(true);
     setError("");
 
@@ -282,8 +292,8 @@ export default function ParametresPage() {
               ))}
             </select>
             <p className="text-xs text-slate-400 mt-1">
-              Vous saisissez toujours vos prix en FCFA. La devise choisie convertit
-              l&apos;affichage pour vos clients (1 € = 655,96 FCFA · 1 $ ≈ 600 FCFA).
+              Vos prix sont saisis et affichés dans cette devise (centimes pour € et $).
+              La facturation TableFlow reste en FCFA.
             </p>
           </div>
         </div>

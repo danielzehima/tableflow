@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useMoney } from "../components/CurrencyContext";
+import { useMoney, useCurrency } from "../components/CurrencyContext";
+import { currencySymbol } from "../../lib/currency";
 
 type PromoCode = {
   id: string;
@@ -28,6 +29,7 @@ function fmtValue(code: PromoCode, money: (n: number) => string) {
 
 export default function CodesPromoPage() {
   const money = useMoney();
+  const currency = useCurrency();
   const [codes, setCodes] = useState<PromoCode[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -152,28 +154,29 @@ export default function CodesPromoPage() {
                   className="w-full bg-slate-800 border border-slate-700 text-white rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500"
                 >
                   <option value="percent">Pourcentage (%)</option>
-                  <option value="fixed">Montant fixe (FCFA)</option>
+                  <option value="fixed">Montant fixe ({currencySymbol(currency)})</option>
                 </select>
               </div>
               <div>
                 <label className="block text-xs font-semibold text-slate-400 mb-1.5 uppercase tracking-wide">
-                  Valeur * {form.type === "percent" ? "(en %)" : "(en FCFA)"}
+                  Valeur * {form.type === "percent" ? "(en %)" : `(en ${currencySymbol(currency)})`}
                 </label>
                 <input
                   name="value" type="number" required value={form.value} onChange={handleChange}
                   placeholder={form.type === "percent" ? "10" : "1000"}
                   min="1" max={form.type === "percent" ? "100" : undefined}
+                  step={form.type === "percent" ? 1 : (currency === "XOF" ? 50 : 0.01)}
                   className="w-full bg-slate-800 border border-slate-700 text-white placeholder-slate-500 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500"
                 />
               </div>
               <div>
                 <label className="block text-xs font-semibold text-slate-400 mb-1.5 uppercase tracking-wide">
-                  Commande minimum (FCFA)
+                  Commande minimum ({currencySymbol(currency)})
                 </label>
                 <input
                   name="min_order" type="number" value={form.min_order} onChange={handleChange}
                   placeholder="0 = aucun minimum"
-                  min="0"
+                  min="0" step={currency === "XOF" ? 50 : 0.01}
                   className="w-full bg-slate-800 border border-slate-700 text-white placeholder-slate-500 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500"
                 />
               </div>

@@ -2,9 +2,11 @@
 // TableFlow — Devises des restaurants (FCFA / EUR / USD)
 // Source unique de vérité pour le formatage des montants côté restaurant.
 //
-// MODÈLE : les prix sont TOUJOURS stockés en Franc CFA (XOF) en base.
-// La devise du restaurant n'est qu'un choix d'AFFICHAGE : on convertit
-// le montant XOF au moment de l'affichage (jamais en base).
+// MODÈLE : devise NATIVE par restaurant. Chaque restaurant saisit, stocke
+// et affiche ses prix dans SA devise. Pas de conversion à l'affichage.
+//  - FCFA (XOF) : montants entiers
+//  - EUR / USD  : 2 décimales (centimes)
+// Les prix sont stockés en décimal (numeric) pour gérer les centimes.
 // ================================================================
 
 export type Currency = "XOF" | "EUR" | "USD";
@@ -30,40 +32,24 @@ export function asCurrency(value: string | null | undefined): Currency {
   return value === "EUR" || value === "USD" || value === "XOF" ? value : DEFAULT_CURRENCY;
 }
 
-// ================================================================
-// Taux de conversion — combien de FCFA (XOF) vaut 1 unité de la devise.
-//  - EUR : taux FIXE officiel BCEAO (1 € = 655,96 FCFA) — ne change jamais.
-//  - USD : taux FLOTTANT approximatif. Constante modifiable ici.
-// ================================================================
-export const EUR_RATE = 655.96; // 1 € = 655,96 FCFA
-export const USD_RATE = 600;    // 1 $ ≈ 600 FCFA (ajustable)
+/** Nombre de décimales d'affichage/saisie selon la devise (FCFA: 0, EUR/USD: 2). */
+export function currencyDecimals(currency: string | null | undefined): number {
+  return asCurrency(currency) === "XOF" ? 0 : 2;
+}
 
-export const XOF_PER_UNIT: Record<Currency, number> = {
-  XOF: 1,
-  EUR: EUR_RATE,
-  USD: USD_RATE,
-};
-
-/**
- * Convertit un montant stocké en FCFA (XOF) vers la devise d'affichage.
- * Renvoie un NOMBRE non formaté (peut avoir des décimales).
- * Ex : convertCurrency(2500, "EUR") → 3.81  (2500 / 655,96)
- *      convertCurrency(2500, "USD") → 4.17  (2500 / 600)
- *      convertCurrency(2500, "XOF") → 2500
- */
-export function convertCurrency(amountXof: number, currency: string | null | undefined): number {
-  const n = Number.isFinite(amountXof) ? amountXof : 0;
-  return n / XOF_PER_UNIT[asCurrency(currency)];
+/** Pas de saisie d'un champ prix selon la devise (1 pour FCFA, 0.01 pour €/$). */
+export function currencyStep(currency: string | null | undefined): number {
+  return asCurrency(currency) === "XOF" ? 1 : 0.01;
 }
 
 /**
- * Opération inverse : convertit un montant saisi DANS la devise d'affichage
- * vers la base FCFA (XOF). Utile pour la caisse (somme reçue, monnaie).
- * Ex : toBaseXof(5, "EUR") → 3280  (5 × 655,96)
+ * Arrondit un montant à la précision de la devise.
+ * Indispensable pour les calculs (remises, totaux) afin d'éviter les
+ * dérives de virgule flottante. FCFA → entier ; EUR/USD → 2 décimales.
  */
-export function toBaseXof(amount: number, currency: string | null | undefined): number {
-  const n = Number.isFinite(amount) ? amount : 0;
-  return Math.round(n * XOF_PER_UNIT[asCurrency(currency)]);
+export function roundMoney(amount: number, currency: string | null | undefined): number {
+  const f = Math.pow(10, currencyDecimals(currency));
+  return Math.round((Number(amount) || 0) * f) / f;
 }
 
 /** Symbole court de la devise (pour les affichages où le nombre est séparé). */
@@ -72,19 +58,17 @@ export function currencySymbol(currency: string | null | undefined): string {
 }
 
 /**
- * Formate un montant FCFA (base) dans la devise d'affichage du restaurant.
+ * Formate un montant DANS la devise native du restaurant (aucune conversion).
  * FCFA → entier ; EUR/USD → 2 décimales.
- * Ex : formatMoney(2500, "XOF") → "2 500 FCFA"
- *      formatMoney(2500, "EUR") → "3,81 €"
- *      formatMoney(2500, "USD") → "$4.17"
+ * Ex : formatMoney(2500, "XOF")  → "2 500 FCFA"
+ *      formatMoney(12.5, "EUR")  → "12,50 €"
+ *      formatMoney(12.5, "USD")  → "$12.50"
  */
-export function formatMoney(amountXof: number, currency: string | null | undefined): string {
+export function formatMoney(amount: number, currency: string | null | undefined): string {
   const cfg = CURRENCIES[asCurrency(currency)];
-  const value = convertCurrency(amountXof, cfg.code);
-  const formatted =
-    cfg.code === "XOF"
-      ? Math.round(value).toLocaleString(cfg.locale)
-      : value.toLocaleString(cfg.locale, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  const d = currencyDecimals(cfg.code);
+  const n = Number.isFinite(amount) ? amount : 0;
+  const formatted = n.toLocaleString(cfg.locale, { minimumFractionDigits: d, maximumFractionDigits: d });
   return cfg.position === "prefix"
     ? `${cfg.symbol}${formatted}`
     : `${formatted} ${cfg.symbol}`;

@@ -4,7 +4,7 @@ import { useState, useContext, createContext, useEffect, useRef } from "react";
 import ChatWidget from "./components/ChatWidget";
 import { translations, detectLang } from "./i18n";
 import type { Lang, T } from "./i18n";
-import { formatMoney, type Currency } from "../lib/currency";
+import { formatMoney, roundMoney, type Currency } from "../lib/currency";
 
 const PrimaryColorCtx = createContext("#f97316");
 const LangCtx = createContext<Lang>("fr");
@@ -154,9 +154,10 @@ function CategoryPills({
 function PriceDisplay({ price }: { price: number }) {
   const primary = useContext(PrimaryColorCtx);
   const discount = useContext(OffPeakDiscountCtx);
+  const currency = useContext(CurrencyCtx);
   const money = useMoney();
   if (discount > 0) {
-    const discounted = Math.round(price * (1 - discount / 100));
+    const discounted = roundMoney(price * (1 - discount / 100), currency);
     return (
       <div className="flex flex-col gap-0.5">
         <span className="text-xs text-slate-400 line-through leading-none">
@@ -332,6 +333,7 @@ function CartDrawer({
 }) {
   const t = useT();
   const money = useMoney();
+  const currency = useContext(CurrencyCtx);
   const [tableNumber, setTableNumber] = useState(initialTable ?? "");
   const [customerName, setCustomerName] = useState("");
   const [customerPhone, setCustomerPhone] = useState("");
@@ -357,7 +359,7 @@ function CartDrawer({
   // Réduction heures creuses active (contexte partagé avec PriceDisplay)
   const offPeakDiscount = useContext(OffPeakDiscountCtx);
   const discountedPrice = (price: number) =>
-    offPeakDiscount > 0 ? Math.round(price * (1 - offPeakDiscount / 100)) : price;
+    offPeakDiscount > 0 ? roundMoney(price * (1 - offPeakDiscount / 100), currency) : price;
 
   const rawTotal      = cart.reduce((s, c) => s + c.item.price * c.quantity, 0);
   const offPeakSaving = rawTotal - cart.reduce((s, c) => s + discountedPrice(c.item.price) * c.quantity, 0);
@@ -1658,7 +1660,7 @@ export default function RestaurantPageClient({
   const cartCount = cart.reduce((s, c) => s + c.quantity, 0);
   // Applique la réduction heures creuses si active
   const cartTotal = offPeakActive
-    ? cart.reduce((s, c) => s + Math.round(c.item.price * (1 - offPeakActive.slot.discount_percent / 100)) * c.quantity, 0)
+    ? cart.reduce((s, c) => s + roundMoney(c.item.price * (1 - offPeakActive.slot.discount_percent / 100), restaurant.currency ?? "XOF") * c.quantity, 0)
     : cart.reduce((s, c) => s + c.item.price * c.quantity, 0);
 
   const tabs: { key: Tab; emoji: string; label: string }[] = [

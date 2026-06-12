@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { supabase } from "../../../lib/supabase-server";
-import { formatMoney } from "../../../lib/currency";
+import { formatMoney, roundMoney } from "../../../lib/currency";
 
 export async function POST(req: Request) {
   const { restaurant_id, code, total } = await req.json();
@@ -42,7 +42,7 @@ export async function POST(req: Request) {
 
   let discount_amount = 0;
   if (promo.type === "percent") {
-    discount_amount = Math.round((Number(total) * Number(promo.value)) / 100);
+    discount_amount = roundMoney((Number(total) * Number(promo.value)) / 100, currency);
   } else {
     discount_amount = Math.min(Number(promo.value), Number(total));
   }
