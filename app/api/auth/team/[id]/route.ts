@@ -33,12 +33,13 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
   const update: Record<string, unknown> = {};
   if (body.role && allowed.includes(body.role as Role)) update.role = body.role;
   if (typeof body.active === "boolean") update.active = body.active;
+  if (typeof body.phone === "string") update.phone = body.phone.trim() || null;
 
   const { data, error } = await supabase
     .from("restaurant_users")
     .update(update)
     .eq("id", id)
-    .select("id, name, email, role, active")
+    .select("id, name, email, phone, role, active")
     .single();
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });

@@ -4,6 +4,7 @@ import { useState } from "react";
 import Sidebar from "./Sidebar";
 import OrderNotificationBell from "./OrderNotificationBell";
 import ReadyOrderBell from "./ReadyOrderBell";
+import PushRegister from "./PushRegister";
 import WaiterCallBell from "./WaiterCallBell";
 import InstallPrompt from "./InstallPrompt";
 import ShareButton from "./ShareButton";
@@ -118,9 +119,12 @@ export default function DashboardShell({
             <div className="flex items-center gap-3">
               <ShareRestaurantButton slug={restaurantSlug} name={restaurantName} />
               <WaiterCallBell restaurantId={restaurantId} />
-              {/* Cloche "plat prêt" : uniquement pour le personnel de service (pas le cuisinier) */}
+              {/* Cloche "plat prêt" + push PWA : personnel de service uniquement (pas le cuisinier) */}
               {(userRole === "owner" || userRole === "manager" || userRole === "waiter") && (
-                <ReadyOrderBell restaurantId={restaurantId} />
+                <>
+                  <PushRegister />
+                  <ReadyOrderBell restaurantId={restaurantId} />
+                </>
               )}
               <OrderNotificationBell restaurantId={restaurantId} />
               <div className="hidden sm:flex items-center gap-2 text-right">

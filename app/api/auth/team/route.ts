@@ -11,7 +11,7 @@ export async function GET() {
 
   const { data, error } = await supabase
     .from("restaurant_users")
-    .select("id, name, email, role, active, created_at")
+    .select("id, name, email, phone, role, active, created_at")
     .eq("restaurant_id", session.restaurantId)
     .order("created_at");
 
@@ -27,7 +27,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Seul le propriétaire peut gérer l'équipe" }, { status: 403 });
   }
 
-  const { name, email, password, role } = await req.json();
+  const { name, email, password, role, phone } = await req.json();
 
   if (!name || !email || !password || !role) {
     return NextResponse.json({ error: "Tous les champs sont requis" }, { status: 400 });
@@ -58,11 +58,12 @@ export async function POST(req: Request) {
       restaurant_id: session.restaurantId,
       name,
       email: email.toLowerCase().trim(),
+      phone: typeof phone === "string" && phone.trim() ? phone.trim() : null,
       password_hash: hashPassword(password),
       role,
       active: true,
     })
-    .select("id, name, email, role, active, created_at")
+    .select("id, name, email, phone, role, active, created_at")
     .single();
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });

@@ -5,7 +5,7 @@ import { ROLE_LABELS, ROLE_COLORS } from "../../lib/auth";
 import type { Role } from "../../lib/auth";
 
 type Member = {
-  id: string; name: string; email: string;
+  id: string; name: string; email: string; phone: string | null;
   role: Role; active: boolean; created_at: string;
 };
 
@@ -23,7 +23,7 @@ export default function EquipePage() {
   const [saving, setSaving] = useState(false);
   const [actingId, setActingId] = useState<string | null>(null);
   const [error, setError] = useState("");
-  const [form, setForm] = useState({ name: "", email: "", password: "", role: "waiter" as Role });
+  const [form, setForm] = useState({ name: "", email: "", phone: "", password: "", role: "waiter" as Role });
   const [showPwd, setShowPwd] = useState(false);
 
   async function load() {
@@ -50,7 +50,7 @@ export default function EquipePage() {
       body: JSON.stringify(form),
     });
     if (res.ok) {
-      setForm({ name: "", email: "", password: "", role: "waiter" });
+      setForm({ name: "", email: "", phone: "", password: "", role: "waiter" });
       setShowForm(false);
       await load();
     } else {
@@ -80,6 +80,16 @@ export default function EquipePage() {
     });
     await load();
     setActingId(null);
+  }
+
+  async function savePhone(member: Member, phone: string) {
+    if ((member.phone || "") === phone.trim()) return;
+    await fetch(`/api/auth/team/${member.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ phone }),
+    });
+    setMembers((prev) => prev.map((x) => (x.id === member.id ? { ...x, phone: phone.trim() || null } : x)));
   }
 
   async function removeMember(member: Member) {
@@ -162,6 +172,18 @@ export default function EquipePage() {
                   {!m.active && <span className="text-xs text-green-700">(désactivé)</span>}
                 </div>
                 <div className="text-green-700 text-xs truncate">{m.email}</div>
+                {isOwner && (m.role === "waiter" || m.role === "manager") && (
+                  <div className="flex items-center gap-1.5 mt-1.5">
+                    <span className="text-[11px] text-slate-400">📱 WhatsApp</span>
+                    <input
+                      type="tel"
+                      defaultValue={m.phone ?? ""}
+                      onBlur={(e) => savePhone(m, e.target.value)}
+                      placeholder="+225 07 00 00 00 00"
+                      className="text-xs border border-slate-200 rounded-lg px-2 py-1 w-44 focus:outline-none focus:ring-2 focus:ring-emerald-400"
+                    />
+                  </div>
+                )}
               </div>
 
               {/* Role badge / select */}
@@ -237,6 +259,14 @@ export default function EquipePage() {
                   <input type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} required
                     className="w-full border border-slate-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400"
                     placeholder="marie@restaurant.com" />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-slate-600 mb-1.5 uppercase tracking-wide">
+                    Téléphone WhatsApp <span className="text-slate-400 normal-case font-normal">(optionnel — alertes « plat prêt »)</span>
+                  </label>
+                  <input type="tel" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })}
+                    className="w-full border border-slate-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400"
+                    placeholder="+225 07 00 00 00 00" />
                 </div>
                 <div>
                   <label className="block text-xs font-semibold text-slate-600 mb-1.5 uppercase tracking-wide">Mot de passe provisoire</label>
