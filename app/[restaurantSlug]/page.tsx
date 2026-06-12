@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 import { supabase } from "../lib/supabase-server";
 import { getSession } from "../lib/auth-server";
+import { asCurrency } from "../lib/currency";
 import RestaurantPageClient from "./RestaurantPageClient";
 
 type Props = {
@@ -77,6 +78,7 @@ export default async function RestaurantPage({ params, searchParams }: Props) {
     welcomeMessage: restaurant.welcome_message || "",
     mapsUrl: restaurant.maps_url ?? "",
     onlinePaymentEnabled: (restaurant as { online_payment_enabled?: boolean }).online_payment_enabled ?? false,
+    currency: asCurrency((restaurant as { currency?: string }).currency),
     images: (galleryData ?? []).map((i: { id: string; url: string }) => ({ id: i.id, url: i.url })),
     menu,
   };

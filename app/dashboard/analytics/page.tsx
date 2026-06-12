@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
+import { useMoney } from "../components/CurrencyContext";
 
 // ── Types ────────────────────────────────────────────────────────
 
@@ -29,13 +30,10 @@ function pct(current: number, prev: number): number | null {
   return Math.round(((current - prev) / prev) * 100);
 }
 
-function fmtCFA(n: number) {
-  return `${n.toLocaleString("fr-FR")} F`;
-}
-
 // ── Page ─────────────────────────────────────────────────────────
 
 export default function AnalyticsPage() {
+  const money = useMoney();
   const [period, setPeriod] = useState<Period>("7");
   const [daily, setDaily] = useState<DailyData[]>([]);
   const [stats, setStats] = useState<StatsData | null>(null);
@@ -120,7 +118,7 @@ export default function AnalyticsPage() {
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           <TodayCard
             label="Chiffre d'affaires"
-            value={stats ? fmtCFA(stats.today.revenue) : "—"}
+            value={stats ? money(stats.today.revenue) : "—"}
             pct={revPct}
             loading={loading}
           />
@@ -132,7 +130,7 @@ export default function AnalyticsPage() {
           />
           <TodayCard
             label="Ticket moyen"
-            value={stats ? fmtCFA(stats.today.avgTicket) : "—"}
+            value={stats ? money(stats.today.avgTicket) : "—"}
             pct={null}
             loading={loading}
             sub="par commande"
@@ -143,18 +141,18 @@ export default function AnalyticsPage() {
       {/* ── KPIs période ─────────────────────────────────────────── */}
       <div className="grid grid-cols-2 xl:grid-cols-4 gap-4">
         <StatCard icon="💰" label={`CA (${PERIOD_LABELS[period]})`}
-          value={fmtCFA(totalRevenue)} loading={loading} />
+          value={money(totalRevenue)} loading={loading} />
         <StatCard icon="🛎️" label="Commandes"
           value={totalOrders.toString()} loading={loading} />
         <StatCard icon="📈" label="Moy. par jour actif"
-          value={fmtCFA(avgDaily)} loading={loading} />
+          value={money(avgDaily)} loading={loading} />
         <StatCard icon="🏆" label="Meilleur jour"
           value={
             bestDay && bestDay.revenue > 0
               ? new Date(bestDay.date + "T12:00:00").toLocaleDateString("fr-FR", { day: "numeric", month: "short" })
               : "—"
           }
-          sub={bestDay && bestDay.revenue > 0 ? fmtCFA(bestDay.revenue) : undefined}
+          sub={bestDay && bestDay.revenue > 0 ? money(bestDay.revenue) : undefined}
           loading={loading}
         />
       </div>
@@ -207,7 +205,7 @@ export default function AnalyticsPage() {
                       </div>
                       <div className="text-right shrink-0 ml-3">
                         <span className="text-orange-600 font-bold text-sm">{dish.count}×</span>
-                        <span className="text-slate-400 text-xs ml-2">{fmtCFA(dish.revenue)}</span>
+                        <span className="text-slate-400 text-xs ml-2">{money(dish.revenue)}</span>
                       </div>
                     </div>
                     <div className="h-1.5 bg-slate-100 rounded-full overflow-hidden">
@@ -261,7 +259,7 @@ export default function AnalyticsPage() {
                 <div className="flex items-center gap-6">
                   <span className="text-xs text-slate-400">{d.orders} cmd</span>
                   <span className={`text-sm font-bold ${d.revenue > 0 ? "text-slate-900" : "text-slate-300"}`}>
-                    {d.revenue > 0 ? fmtCFA(d.revenue) : "—"}
+                    {d.revenue > 0 ? money(d.revenue) : "—"}
                   </span>
                 </div>
               </div>

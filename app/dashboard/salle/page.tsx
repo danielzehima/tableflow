@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
+import { useMoney } from "../components/CurrencyContext";
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -62,10 +63,6 @@ function elapsed(date: string): string {
   return `${Math.floor(mins / 60)}h${String(mins % 60).padStart(2, "0")}`;
 }
 
-function fmt(n: number): string {
-  return new Intl.NumberFormat("fr-FR").format(n) + " FCFA";
-}
-
 // ── State configs ─────────────────────────────────────────────────────────────
 
 const STATE_STYLE: Record<TableState, {
@@ -85,6 +82,7 @@ const STATUS_LABEL: Record<string, string> = {
 // ── Main component ────────────────────────────────────────────────────────────
 
 export default function SallePage() {
+  const money = useMoney();
   const [restaurantId, setRestaurantId] = useState<string | null>(null);
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
@@ -362,7 +360,7 @@ export default function SallePage() {
                     <div className="pt-2 border-t border-slate-200 flex justify-between">
                       <span className="text-sm font-bold text-slate-700">Total</span>
                       <span className="text-sm font-extrabold text-orange-500">
-                        {fmt(Number(order.total))}
+                        {money(Number(order.total))}
                       </span>
                     </div>
                   </div>

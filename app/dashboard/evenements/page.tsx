@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useMoney, useCurrency } from "../components/CurrencyContext";
+import { currencySymbol } from "../../lib/currency";
 
 type EventReservation = {
   id: string;
@@ -52,6 +54,8 @@ const EMPTY_FORM = {
 };
 
 export default function EvenementsPage() {
+  const money = useMoney();
+  const currency = useCurrency();
   const [events, setEvents] = useState<Event[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -234,7 +238,7 @@ export default function EvenementsPage() {
               </div>
               <div>
                 <label className="block text-xs font-semibold text-slate-600 mb-1.5 uppercase tracking-wide">
-                  Prix (FCFA)
+                  Prix ({currencySymbol(currency)})
                 </label>
                 <input
                   type="number"
@@ -369,7 +373,7 @@ export default function EvenementsPage() {
                       <div className="flex items-center gap-3 mt-1.5 flex-wrap">
                         {ev.price > 0 ? (
                           <span className="text-xs font-bold text-orange-600">
-                            {ev.price.toLocaleString("fr-FR")} FCFA
+                            {money(ev.price)}
                           </span>
                         ) : (
                           <span className="text-xs text-green-600 font-semibold">Gratuit</span>

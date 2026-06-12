@@ -2,6 +2,8 @@
 
 import { useEffect, useState, useCallback, useRef } from "react";
 import { supabaseClient } from "../../lib/supabase-client";
+import { useMoney, useCurrency } from "../components/CurrencyContext";
+import { currencySymbol } from "../../lib/currency";
 
 type OrderStatus = "pending" | "preparing" | "ready" | "served" | "paid" | "cancelled";
 
@@ -70,6 +72,8 @@ function elapsed(created_at: string) {
 }
 
 export default function CommandesPage() {
+  const money = useMoney();
+  const currency = useCurrency();
   const [orders, setOrders] = useState<Order[]>([]);
   const [tables, setTables] = useState<Table[]>([]);
   const [loading, setLoading] = useState(true);
@@ -329,7 +333,7 @@ export default function CommandesPage() {
     ]);
   }
 
-  const exportHeaders = ["Date/Heure", "Table", "Articles", "Total (FCFA)", "Statut"];
+  const exportHeaders = ["Date/Heure", "Table", "Articles", `Total (${currencySymbol(currency)})`, "Statut"];
   const exportSlug = restaurantName.toLowerCase().replace(/[^a-z0-9]/g, "-").replace(/-+/g, "-");
   const exportDate = new Date().toLocaleDateString("fr-CA");
 
@@ -577,7 +581,7 @@ export default function CommandesPage() {
                                 <div key={m.id} className="flex items-center justify-between px-3 py-2.5 hover:bg-orange-50 border-b border-slate-50 last:border-0 transition-colors">
                                   <div className="min-w-0 flex-1">
                                     <div className="text-sm font-medium text-slate-800 truncate">{m.name}</div>
-                                    <div className="text-xs text-slate-400">{m.price.toLocaleString("fr-FR")} F</div>
+                                    <div className="text-xs text-slate-400">{money(m.price)}</div>
                                   </div>
                                   <button
                                     type="button"
@@ -619,14 +623,14 @@ export default function CommandesPage() {
                                 </button>
                               </div>
                               <div className="w-20 text-right text-xs font-semibold text-slate-600 shrink-0">
-                                {(c.item.price * c.qty).toLocaleString("fr-FR")} F
+                                {money(c.item.price * c.qty)}
                               </div>
                             </div>
                           ))}
                           <div className="px-3 py-3 bg-orange-50 border-t border-orange-100 flex items-center justify-between">
                             <span className="text-sm font-bold text-slate-700">Total</span>
                             <span className="text-lg font-extrabold text-orange-600">
-                              {cartItems.reduce((s, c) => s + c.item.price * c.qty, 0).toLocaleString("fr-FR")} F
+                              {money(cartItems.reduce((s, c) => s + c.item.price * c.qty, 0))}
                             </span>
                           </div>
                         </div>
@@ -666,7 +670,7 @@ export default function CommandesPage() {
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-5">
           <div className="text-2xl mb-1">💰</div>
-          <div className="text-2xl font-extrabold text-slate-900">{revenue.toLocaleString("fr-FR")} F</div>
+          <div className="text-2xl font-extrabold text-slate-900">{money(revenue)}</div>
           <div className="text-xs text-green-700 mt-0.5">Chiffre du jour</div>
         </div>
         <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-5">
@@ -796,7 +800,7 @@ export default function CommandesPage() {
                         {order.items}
                       </td>
                       <td className="px-4 md:px-6 py-4 font-semibold text-slate-900 whitespace-nowrap">
-                        {Number(order.total).toLocaleString("fr-FR")} F
+                        {money(Number(order.total))}
                       </td>
                       <td className="px-4 md:px-6 py-4">
                         <div className="flex flex-col gap-1">
@@ -915,7 +919,7 @@ export default function CommandesPage() {
                   <div className="flex items-center justify-between px-4 py-3 bg-orange-50 border border-orange-100 rounded-xl">
                     <span className="text-sm font-semibold text-orange-700">Total à payer</span>
                     <span className="text-2xl font-extrabold text-orange-600">
-                      {total.toLocaleString("fr-FR")} <span className="text-base font-bold">F</span>
+                      {money(total)}
                     </span>
                   </div>
 
@@ -932,7 +936,7 @@ export default function CommandesPage() {
                         autoFocus
                         value={amountReceived}
                         onChange={(e) => setAmountReceived(e.target.value)}
-                        placeholder={`Minimum ${total.toLocaleString("fr-FR")}`}
+                        placeholder={`Minimum ${money(total)}`}
                         className={`w-full border rounded-xl px-4 py-3 text-lg font-bold pr-12 focus:outline-none focus:ring-2 transition-colors ${
                           amountReceived && !canValidate
                             ? "border-red-300 focus:ring-red-400 bg-red-50 text-red-700"
@@ -941,11 +945,11 @@ export default function CommandesPage() {
                             : "border-slate-200 focus:ring-orange-400"
                         }`}
                       />
-                      <span className="absolute right-4 top-1/2 -translate-y-1/2 text-sm font-bold text-slate-400">F</span>
+                      <span className="absolute right-4 top-1/2 -translate-y-1/2 text-sm font-bold text-slate-400">{currencySymbol(currency)}</span>
                     </div>
                     {amountReceived && !canValidate && (
                       <p className="text-xs text-red-500 mt-1.5 flex items-center gap-1">
-                        <span>⚠️</span> Montant insuffisant ({(total - received).toLocaleString("fr-FR")} F manquants)
+                        <span>⚠️</span> Montant insuffisant ({money(total - received)} manquants)
                       </p>
                     )}
                   </div>
@@ -962,7 +966,7 @@ export default function CommandesPage() {
                     <span className={`text-2xl font-extrabold ${
                       canValidate && change > 0 ? "text-emerald-600" : "text-slate-400"
                     }`}>
-                      {canValidate ? change.toLocaleString("fr-FR") : "—"} <span className="text-base font-bold">F</span>
+                      {canValidate ? money(change) : "—"}
                     </span>
                   </div>
                 </div>
@@ -1017,7 +1021,7 @@ export default function CommandesPage() {
                 </div>
                 <h2 className="text-lg font-bold text-slate-900">Paiement enregistré !</h2>
                 <p className="text-sm text-slate-500 mt-1">
-                  Table {lastCashData.order.table_number} · {Number(lastCashData.order.total).toLocaleString("fr-FR")} F
+                  Table {lastCashData.order.table_number} · {money(Number(lastCashData.order.total))}
                 </p>
               </div>
 
@@ -1025,12 +1029,12 @@ export default function CommandesPage() {
               <div className="px-6 py-4 space-y-2 bg-slate-50 border-b border-slate-100">
                 <div className="flex justify-between text-sm">
                   <span className="text-slate-500">Somme reçue</span>
-                  <span className="font-semibold text-slate-800">{lastCashData.received.toLocaleString("fr-FR")} F</span>
+                  <span className="font-semibold text-slate-800">{money(lastCashData.received)}</span>
                 </div>
                 <div className="flex justify-between text-sm">
                   <span className="text-slate-500">Monnaie rendue</span>
                   <span className={`font-bold ${lastCashData.change > 0 ? "text-emerald-600" : "text-slate-500"}`}>
-                    {lastCashData.change.toLocaleString("fr-FR")} F
+                    {money(lastCashData.change)}
                   </span>
                 </div>
               </div>

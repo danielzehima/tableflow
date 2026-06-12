@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useMoney, useCurrency } from "../components/CurrencyContext";
+import { currencySymbol } from "../../lib/currency";
 
 type PromoCode = {
   id: string;
@@ -19,13 +21,15 @@ function fmt(d: string) {
   return new Date(d).toLocaleDateString("fr-FR", { day: "numeric", month: "short", year: "numeric" });
 }
 
-function fmtValue(code: PromoCode) {
+function fmtValue(code: PromoCode, money: (n: number) => string) {
   return code.type === "percent"
     ? `−${code.value}%`
-    : `−${Number(code.value).toLocaleString("fr-FR")} FCFA`;
+    : `−${money(Number(code.value))}`;
 }
 
 export default function CodesPromoPage() {
+  const money = useMoney();
+  const currency = useCurrency();
   const [codes, setCodes] = useState<PromoCode[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -150,12 +154,12 @@ export default function CodesPromoPage() {
                   className="w-full bg-slate-800 border border-slate-700 text-white rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500"
                 >
                   <option value="percent">Pourcentage (%)</option>
-                  <option value="fixed">Montant fixe (FCFA)</option>
+                  <option value="fixed">Montant fixe ({currencySymbol(currency)})</option>
                 </select>
               </div>
               <div>
                 <label className="block text-xs font-semibold text-slate-400 mb-1.5 uppercase tracking-wide">
-                  Valeur * {form.type === "percent" ? "(en %)" : "(en FCFA)"}
+                  Valeur * {form.type === "percent" ? "(en %)" : `(en ${currencySymbol(currency)})`}
                 </label>
                 <input
                   name="value" type="number" required value={form.value} onChange={handleChange}
@@ -166,7 +170,7 @@ export default function CodesPromoPage() {
               </div>
               <div>
                 <label className="block text-xs font-semibold text-slate-400 mb-1.5 uppercase tracking-wide">
-                  Commande minimum (FCFA)
+                  Commande minimum ({currencySymbol(currency)})
                 </label>
                 <input
                   name="min_order" type="number" value={form.min_order} onChange={handleChange}
@@ -258,11 +262,11 @@ export default function CodesPromoPage() {
                         </span>
                       </td>
                       <td className="px-6 py-4">
-                        <span className="font-bold text-orange-400 text-base">{fmtValue(code)}</span>
+                        <span className="font-bold text-orange-400 text-base">{fmtValue(code, money)}</span>
                       </td>
                       <td className="px-6 py-4 hidden md:table-cell text-slate-400 text-xs">
                         {code.min_order > 0
-                          ? `${Number(code.min_order).toLocaleString("fr-FR")} FCFA`
+                          ? money(Number(code.min_order))
                           : <span className="text-slate-600">—</span>
                         }
                       </td>

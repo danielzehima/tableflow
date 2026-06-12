@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useMoney, useCurrency } from "../components/CurrencyContext";
+import { currencySymbol } from "../../lib/currency";
 
 type MenuItem = {
   id: string;
@@ -37,6 +39,8 @@ const EMPTY_FORM = {
 };
 
 export default function MenuPage() {
+  const money = useMoney();
+  const currency = useCurrency();
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
   const [restaurantId, setRestaurantId] = useState("");
@@ -324,7 +328,7 @@ export default function MenuPage() {
                         <p className="text-slate-400 text-xs mt-0.5 truncate">{item.description}</p>
                       )}
                       <p className="text-slate-900 font-bold text-sm mt-1">
-                        {item.price.toLocaleString("fr-FR")} FCFA
+                        {money(item.price)}
                       </p>
                     </div>
 
@@ -445,7 +449,7 @@ export default function MenuPage() {
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1.5">Prix (FCFA) <span className="text-red-400">*</span></label>
+                <label className="block text-sm font-medium text-slate-700 mb-1.5">Prix ({currencySymbol(currency)}) <span className="text-red-400">*</span></label>
                 <input
                   type="number" min="0" step="50"
                   value={form.price}
@@ -537,7 +541,7 @@ export default function MenuPage() {
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1.5">Prix (FCFA) <span className="text-red-400">*</span></label>
+                <label className="block text-sm font-medium text-slate-700 mb-1.5">Prix ({currencySymbol(currency)}) <span className="text-red-400">*</span></label>
                 <input
                   type="number" min="0" step="50"
                   value={editForm.price}

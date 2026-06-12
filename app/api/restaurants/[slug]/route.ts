@@ -7,9 +7,10 @@ export async function PATCH(
 ) {
   const { slug } = await params;
   const body = await req.json();
-  const { name, address, phone, email, hours, cuisine, description, tagline, cover_image, primary_color, welcome_message, whatsapp_number, maps_url, geniuspay_api_key, geniuspay_api_secret } = body;
+  const { name, address, phone, email, hours, cuisine, description, tagline, cover_image, primary_color, welcome_message, whatsapp_number, maps_url, geniuspay_api_key, geniuspay_api_secret, currency } = body;
 
   const update: Record<string, string> = {};
+  if (currency !== undefined && ["XOF", "EUR", "USD"].includes(currency)) update.currency = currency;
   if (name !== undefined) update.name = name;
   if (address !== undefined) update.address = address;
   if (phone !== undefined) update.phone = phone;

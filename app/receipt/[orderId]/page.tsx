@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 import { supabase } from "../../lib/supabase-server";
 import { PrintButton, BackButton } from "./ReceiptClient";
+import { formatMoney } from "../../lib/currency";
 
 function parseItems(items: string): { quantity: number; name: string }[] {
   return items.split(",").map((s) => s.trim()).flatMap((part) => {
@@ -21,7 +22,7 @@ export default async function ReceiptPage({ params }: { params: Promise<{ orderI
 
   const { data: order } = await supabase
     .from("orders")
-    .select("id, table_number, items, total, status, customer_name, created_at, restaurant_id, restaurants(name, address, phone)")
+    .select("id, table_number, items, total, status, customer_name, created_at, restaurant_id, restaurants(name, address, phone, currency)")
     .eq("id", orderId)
     .single();
 
@@ -56,6 +57,7 @@ export default async function ReceiptPage({ params }: { params: Promise<{ orderI
     .maybeSingle();
 
   const restaurant = Array.isArray(order.restaurants) ? order.restaurants[0] : order.restaurants;
+  const currency = (restaurant as { currency?: string })?.currency ?? "XOF";
   const items = parseItems(order.items as string);
   const isPaid = order.status === "paid" || !!payment;
 
@@ -161,7 +163,7 @@ export default async function ReceiptPage({ params }: { params: Promise<{ orderI
                 </div>
                 <span className="font-semibold text-slate-800 whitespace-nowrap shrink-0">
                   {item.lineTotal != null
-                    ? `${item.lineTotal.toLocaleString("fr-FR")} FCFA`
+                    ? formatMoney(item.lineTotal, currency)
                     : "—"}
                 </span>
               </div>
@@ -173,7 +175,7 @@ export default async function ReceiptPage({ params }: { params: Promise<{ orderI
             <div className="flex justify-between items-center">
               <span className="font-extrabold text-slate-900 text-base">TOTAL</span>
               <span className="font-extrabold text-orange-600 text-xl">
-                {Number(order.total).toLocaleString("fr-FR")} <span className="text-sm font-semibold text-slate-500">FCFA</span>
+                {formatMoney(Number(order.total), currency)}
               </span>
             </div>
           </div>

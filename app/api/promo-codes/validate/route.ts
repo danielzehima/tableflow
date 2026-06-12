@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { supabase } from "../../../lib/supabase-server";
+import { formatMoney } from "../../../lib/currency";
 
 export async function POST(req: Request) {
   const { restaurant_id, code, total } = await req.json();
@@ -7,6 +8,13 @@ export async function POST(req: Request) {
   if (!restaurant_id || !code || total === undefined) {
     return NextResponse.json({ valid: false, message: "Paramètres manquants" }, { status: 400 });
   }
+
+  const { data: resto } = await supabase
+    .from("restaurants")
+    .select("currency")
+    .eq("id", restaurant_id)
+    .single();
+  const currency = resto?.currency ?? "XOF";
 
   const { data: promo } = await supabase
     .from("promo_codes")
@@ -28,7 +36,7 @@ export async function POST(req: Request) {
   if (Number(total) < Number(promo.min_order)) {
     return NextResponse.json({
       valid: false,
-      message: `Commande minimum requise : ${Number(promo.min_order).toLocaleString("fr-FR")} FCFA`,
+      message: `Commande minimum requise : ${formatMoney(Number(promo.min_order), currency)}`,
     });
   }
 

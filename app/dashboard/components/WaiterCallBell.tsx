@@ -101,7 +101,7 @@ export default function WaiterCallBell({ restaurantId }: { restaurantId: string 
       {open && (
         <>
           <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} />
-          <div className="absolute right-0 top-11 z-50 w-72 bg-white rounded-2xl shadow-2xl border border-slate-100 overflow-hidden">
+          <div className="fixed left-3 right-3 top-16 sm:absolute sm:left-auto sm:right-0 sm:top-11 sm:w-80 z-50 bg-white rounded-2xl shadow-2xl border border-slate-100 overflow-hidden">
             <div className="px-4 py-3 border-b border-slate-100 flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <span className="font-bold text-slate-900 text-sm">Appels de table</span>

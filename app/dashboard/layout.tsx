@@ -14,6 +14,7 @@ import {
   FEATURE_LABELS,
 } from "../lib/plan-utils";
 import type { Role } from "../lib/auth";
+import { asCurrency } from "../lib/currency";
 import DashboardShell from "./components/DashboardShell";
 
 // ── Garde-fous par rôle (inchangés) ──────────────────────────────
@@ -45,7 +46,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
   // ── Récupération du restaurant (avec created_at pour le trial) ──
   const { data: restaurant } = await supabase
     .from("restaurants")
-    .select("id, name, slug, onboarding_done, plan, plan_expires_at, status, created_at")
+    .select("id, name, slug, onboarding_done, plan, plan_expires_at, status, created_at, currency")
     .eq("id", session.restaurantId)
     .single();
 
@@ -127,6 +128,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
       restaurantPlan={restaurantPlan}
       planExpiresAt={planExpiresAt}
       planInfo={planInfo}
+      currency={asCurrency((restaurant as { currency?: string }).currency)}
     >
       {children}
     </DashboardShell>

@@ -4,11 +4,19 @@ import { useState, useContext, createContext, useEffect, useRef } from "react";
 import ChatWidget from "./components/ChatWidget";
 import { translations, detectLang } from "./i18n";
 import type { Lang, T } from "./i18n";
+import { formatMoney, type Currency } from "../lib/currency";
 
 const PrimaryColorCtx = createContext("#f97316");
 const LangCtx = createContext<Lang>("fr");
 const DynTranslCtx = createContext<(text: string) => string>((t) => t);
 const OffPeakDiscountCtx = createContext<number>(0);
+const CurrencyCtx = createContext<Currency>("XOF");
+
+/** Formate un montant avec la devise du restaurant (depuis le contexte). */
+function useMoney(): (amount: number) => string {
+  const currency = useContext(CurrencyCtx);
+  return (amount: number) => formatMoney(amount, currency);
+}
 
 function useT(): T {
   return translations[useContext(LangCtx)] as T;
@@ -102,6 +110,7 @@ type Restaurant = {
   images?: GalleryImage[];
   mapsUrl?: string;
   onlinePaymentEnabled?: boolean;
+  currency?: Currency;
 };
 
 type Tab = "menu" | "reservation" | "info" | "evenements";
@@ -145,29 +154,24 @@ function CategoryPills({
 function PriceDisplay({ price }: { price: number }) {
   const primary = useContext(PrimaryColorCtx);
   const discount = useContext(OffPeakDiscountCtx);
+  const money = useMoney();
   if (discount > 0) {
     const discounted = Math.round(price * (1 - discount / 100));
     return (
       <div className="flex flex-col gap-0.5">
         <span className="text-xs text-slate-400 line-through leading-none">
-          {price.toLocaleString("fr-FR")} FCFA
+          {money(price)}
         </span>
-        <div className="flex items-baseline gap-1">
-          <span className="font-extrabold text-base" style={{ color: primary }}>
-            {discounted.toLocaleString("fr-FR")}
-          </span>
-          <span className="text-xs font-medium" style={{ color: primary, opacity: 0.7 }}>FCFA</span>
-        </div>
+        <span className="font-extrabold text-base" style={{ color: primary }}>
+          {money(discounted)}
+        </span>
       </div>
     );
   }
   return (
-    <div className="flex items-baseline gap-1">
-      <span className="font-extrabold text-base" style={{ color: primary }}>
-        {price.toLocaleString("fr-FR")}
-      </span>
-      <span className="text-xs font-medium" style={{ color: primary, opacity: 0.7 }}>FCFA</span>
-    </div>
+    <span className="font-extrabold text-base" style={{ color: primary }}>
+      {money(price)}
+    </span>
   );
 }
 
@@ -327,6 +331,7 @@ function CartDrawer({
   onClear: () => void;
 }) {
   const t = useT();
+  const money = useMoney();
   const [tableNumber, setTableNumber] = useState(initialTable ?? "");
   const [customerName, setCustomerName] = useState("");
   const [customerPhone, setCustomerPhone] = useState("");
@@ -661,15 +666,15 @@ function CartDrawer({
                       {offPeakDiscount > 0 ? (
                         <span className="flex items-center gap-1.5 flex-wrap">
                           <span className="line-through text-slate-300">
-                            {(item.price * quantity).toLocaleString("fr-FR")}
+                            {money(item.price * quantity)}
                           </span>
                           <span className="text-orange-600">
-                            {(discountedPrice(item.price) * quantity).toLocaleString("fr-FR")} FCFA
+                            {money(discountedPrice(item.price) * quantity)}
                           </span>
                         </span>
                       ) : (
                         <span className="text-orange-600">
-                          {(item.price * quantity).toLocaleString("fr-FR")} FCFA
+                          {money(item.price * quantity)}
                         </span>
                       )}
                     </div>
@@ -707,12 +712,12 @@ function CartDrawer({
                 <>
                   <div className="flex items-center justify-between text-sm">
                     <span className="text-slate-400">Sous-total</span>
-                    <span className="text-slate-400 line-through">{rawTotal.toLocaleString("fr-FR")} FCFA</span>
+                    <span className="text-slate-400 line-through">{money(rawTotal)}</span>
                   </div>
                   <div className="flex items-center justify-between text-sm">
                     <span className="text-orange-600 font-semibold">🔥 Heures creuses −{offPeakDiscount}%</span>
                     <span className="text-orange-600 font-semibold">
-                      −{offPeakSaving.toLocaleString("fr-FR")} FCFA
+                      −{money(offPeakSaving)}
                     </span>
                   </div>
                 </>
@@ -722,13 +727,13 @@ function CartDrawer({
                   {!offPeakDiscount && (
                     <div className="flex items-center justify-between text-sm">
                       <span className="text-slate-400">Sous-total</span>
-                      <span className="text-slate-400 line-through">{rawTotal.toLocaleString("fr-FR")} FCFA</span>
+                      <span className="text-slate-400 line-through">{money(rawTotal)}</span>
                     </div>
                   )}
                   <div className="flex items-center justify-between text-sm">
                     <span className="text-emerald-600 font-semibold">✓ Code {promoApplied.code}</span>
                     <span className="text-emerald-600 font-semibold">
-                      −{promoApplied.discount_amount.toLocaleString("fr-FR")} FCFA
+                      −{money(promoApplied.discount_amount)}
                     </span>
                   </div>
                 </>
@@ -736,8 +741,7 @@ function CartDrawer({
               <div className="flex items-center justify-between pt-1 border-t border-slate-100">
                 <span className="text-slate-500 text-sm font-semibold">{t.totalLabel}</span>
                 <span className="font-extrabold text-slate-900 text-xl">
-                  {finalTotal.toLocaleString("fr-FR")}{" "}
-                  <span className="text-sm font-medium text-slate-500">FCFA</span>
+                  {money(finalTotal)}
                 </span>
               </div>
             </div>
@@ -755,7 +759,7 @@ function CartDrawer({
                         {promoApplied.code}
                       </span>
                       <span className="text-emerald-600 text-xs font-semibold">
-                        −{promoApplied.discount_amount.toLocaleString("fr-FR")} FCFA
+                        −{money(promoApplied.discount_amount)}
                       </span>
                     </div>
                     <button
@@ -847,7 +851,7 @@ function CartDrawer({
                 Annuler
               </button>
               <PrimaryBtn className="flex-[2] py-3.5 text-sm disabled:opacity-60" onClick={handleOrder} disabled={loading}>
-                {loading ? t.orderLoading : `Commander · ${finalTotal.toLocaleString("fr-FR")} FCFA`}
+                {loading ? t.orderLoading : `Commander · ${money(finalTotal)}`}
               </PrimaryBtn>
             </div>
           </div>
@@ -1205,6 +1209,7 @@ type PublicEvent = {
 
 function EventsTab({ slug }: { slug: string }) {
   const t = useT();
+  const money = useMoney();
   const primary = useContext(PrimaryColorCtx);
   const [events, setEvents] = useState<PublicEvent[]>([]);
   const [loading, setLoading] = useState(true);
@@ -1302,7 +1307,7 @@ function EventsTab({ slug }: { slug: string }) {
                   <div className="flex items-center gap-3 mt-2 flex-wrap">
                     {ev.price > 0 ? (
                       <span className="text-sm font-extrabold" style={{ color: primary }}>
-                        {ev.price.toLocaleString("fr-FR")} FCFA
+                        {money(ev.price)}
                       </span>
                     ) : (
                       <span className="text-sm font-bold text-emerald-600">{t.eventFree}</span>
@@ -1516,6 +1521,7 @@ export default function RestaurantPageClient({
   const [popularItems, setPopularItems] = useState<{ mostOrdered: string | null; trending: string[] }>({ mostOrdered: null, trending: [] });
   const heroImgRef = useRef<HTMLDivElement>(null);
   const primary = restaurant.primaryColor || "#f97316";
+  const money = (amount: number) => formatMoney(amount, restaurant.currency ?? "XOF");
   const isDemo = restaurant.isDemo ?? false;
 
   useEffect(() => { setLang(detectLang()); }, []);
@@ -1667,6 +1673,7 @@ export default function RestaurantPageClient({
     <DynTranslCtx.Provider value={dynTr}>
     <PrimaryColorCtx.Provider value={primary}>
     <OffPeakDiscountCtx.Provider value={offPeakActive?.slot.discount_percent ?? 0}>
+    <CurrencyCtx.Provider value={restaurant.currency ?? "XOF"}>
     <div className="min-h-screen bg-slate-50" dir={lang === "ar" ? "rtl" : "ltr"}>
 
       {/* ── Bannière paiement confirmé ── */}
@@ -1888,7 +1895,7 @@ export default function RestaurantPageClient({
               <span>{t.viewCart}</span>
             </span>
             <span className="font-extrabold text-sm">
-              {cartTotal.toLocaleString("fr-FR")} FCFA
+              {money(cartTotal)}
             </span>
 
           </button>
@@ -1918,6 +1925,7 @@ export default function RestaurantPageClient({
       {/* ── Chat en direct ── */}
       {!isDemo && <ChatWidget restaurantId={restaurant.id} />}
     </div>
+    </CurrencyCtx.Provider>
     </OffPeakDiscountCtx.Provider>
     </PrimaryColorCtx.Provider>
     </DynTranslCtx.Provider>

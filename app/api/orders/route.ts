@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { supabase } from "../../lib/supabase-server";
 import { sendWhatsAppNotification } from "../../lib/whatsapp";
+import { formatMoney } from "../../lib/currency";
 
 export async function GET(req: Request) {
   const { searchParams } = new URL(req.url);
@@ -137,17 +138,16 @@ export async function POST(req: Request) {
   // Notification WhatsApp — non bloquante
   const { data: restaurant } = await supabase
     .from("restaurants")
-    .select("whatsapp_number, name")
+    .select("whatsapp_number, name, currency")
     .eq("id", restaurant_id)
     .single();
 
   if (restaurant?.whatsapp_number) {
-    const totalFormatted = new Intl.NumberFormat("fr-FR").format(Number(total));
     const msg =
       `🔔 *Nouvelle commande — ${restaurant.name}*\n\n` +
       `🍽️ Table : ${table_number}\n` +
       `📋 Articles : ${items}\n` +
-      `💰 Total : ${totalFormatted} FCFA`;
+      `💰 Total : ${formatMoney(Number(total), restaurant.currency)}`;
     await sendWhatsAppNotification(restaurant.whatsapp_number, msg);
   }
 

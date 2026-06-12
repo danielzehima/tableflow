@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useRouter } from "next/navigation";
+import { useMoney } from "./CurrencyContext";
 
 type OrderNotif = {
   id: string;
@@ -50,6 +51,7 @@ export default function OrderNotificationBell({ restaurantId }: { restaurantId: 
   const [notifs, setNotifs] = useState<OrderNotif[]>([]);
   const lastSeenRef = useRef<string>(new Date().toISOString());
   const router = useRouter();
+  const money = useMoney();
 
   // Unlock AudioContext on first user gesture (required by iOS Safari)
   useEffect(() => {
@@ -136,7 +138,7 @@ export default function OrderNotificationBell({ restaurantId }: { restaurantId: 
       {open && (
         <>
           <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} />
-          <div className="absolute right-0 top-11 z-50 w-80 bg-white rounded-2xl shadow-2xl border border-slate-100 overflow-hidden">
+          <div className="fixed left-3 right-3 top-16 sm:absolute sm:left-auto sm:right-0 sm:top-11 sm:w-80 z-50 bg-white rounded-2xl shadow-2xl border border-slate-100 overflow-hidden">
             {/* Header */}
             <div className="px-4 py-3 border-b border-slate-100 flex items-center justify-between">
               <div className="flex items-center gap-2">
@@ -178,7 +180,7 @@ export default function OrderNotificationBell({ restaurantId }: { restaurantId: 
                           Table {n.table_number}
                         </span>
                         <span className="text-orange-600 font-bold text-sm shrink-0">
-                          {n.total.toLocaleString("fr-FR")} FCFA
+                          {money(n.total)}
                         </span>
                       </div>
                       <div className="text-slate-400 text-xs mt-0.5">

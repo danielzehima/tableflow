@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
+import { CURRENCIES, type Currency } from "../../lib/currency";
 
 type Restaurant = {
   id: string;
@@ -18,6 +19,7 @@ type Restaurant = {
   cover_image: string;
   whatsapp_number: string;
   maps_url: string;
+  currency: Currency;
   has_geniuspay?: boolean;
 };
 
@@ -66,6 +68,7 @@ export default function ParametresPage() {
         cover_image: data.cover_image ?? "",
         whatsapp_number: data.whatsapp_number ?? "",
         maps_url: data.maps_url ?? "",
+        currency: (data.currency ?? "XOF") as Currency,
       });
       setLoading(false);
     }
@@ -262,6 +265,25 @@ export default function ParametresPage() {
           <Field label="Slogan" name="tagline" value={form.tagline ?? ""} onChange={handleChange} placeholder="Ex : Une expérience culinaire inoubliable" />
           <FieldArea label="Description" name="description" value={form.description ?? ""} onChange={handleChange} />
           <Field label="Type de cuisine" name="cuisine" value={form.cuisine ?? ""} onChange={handleChange} placeholder="Ex : Cuisine africaine" />
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-1.5">
+              Devise
+              <span className="ml-2 text-xs font-normal text-slate-400">— affichée sur votre menu, vos commandes et reçus</span>
+            </label>
+            <select
+              name="currency"
+              value={form.currency ?? "XOF"}
+              onChange={(e) => { setForm({ ...form, currency: e.target.value as Currency }); setSaved(false); }}
+              className="w-full border border-slate-200 rounded-xl px-4 py-3 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-orange-400 transition"
+            >
+              {Object.values(CURRENCIES).map((c) => (
+                <option key={c.code} value={c.code}>{c.label}</option>
+              ))}
+            </select>
+            <p className="text-xs text-slate-400 mt-1">
+              Les prix sont saisis en nombres entiers. La devise des abonnements TableFlow reste le FCFA.
+            </p>
+          </div>
         </div>
 
         {/* Contact & localisation */}

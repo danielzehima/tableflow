@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { useMoney } from "../components/CurrencyContext";
 
 
 const PRESET_COLORS = [
@@ -17,6 +18,7 @@ const PRESET_COLORS = [
 type GalleryImage = { id: string; url: string };
 
 export default function PersonnalisationPage() {
+  const money = useMoney();
   const [slug, setSlug] = useState("");
   const [color, setColor] = useState("#f97316");
   const [welcome, setWelcome] = useState("");
@@ -158,7 +160,7 @@ export default function PersonnalisationPage() {
               <span className="text-xs font-bold px-3 py-1 rounded-full text-white" style={{ backgroundColor: color }}>
                 Commander
               </span>
-              <span className="text-xs font-extrabold" style={{ color }}>2 500 FCFA</span>
+              <span className="text-xs font-extrabold" style={{ color }}>{money(2500)}</span>
             </div>
           </div>
         </div>

@@ -9,8 +9,10 @@ import WaiterCallBell from "./WaiterCallBell";
 import InstallPrompt from "./InstallPrompt";
 import ShareButton from "./ShareButton";
 import { PlanContext } from "./PlanContext";
+import { CurrencyContext } from "./CurrencyContext";
 import type { Role } from "../../lib/auth";
 import type { PlanInfo } from "../../lib/plan-utils";
+import type { Currency } from "../../lib/currency";
 import Link from "next/link";
 
 type Props = {
@@ -23,6 +25,7 @@ type Props = {
   restaurantPlan?: "free" | "starter" | "pro";
   planExpiresAt?: string | null;
   planInfo: PlanInfo;
+  currency?: Currency;
 };
 
 function getInitials(name: string): string {
@@ -45,12 +48,14 @@ export default function DashboardShell({
   restaurantPlan = "free",
   planExpiresAt,
   planInfo,
+  currency = "XOF",
 }: Props) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const initials = getInitials(userName || restaurantName);
 
   return (
-    /* ── Injection du PlanContext pour tous les composants enfants ── */
+    /* ── Injection du PlanContext + devise pour tous les composants enfants ── */
+    <CurrencyContext.Provider value={currency}>
     <PlanContext.Provider value={planInfo}>
       <div className="min-h-screen bg-slate-50">
 
@@ -150,5 +155,6 @@ export default function DashboardShell({
         <InstallPrompt />
       </div>
     </PlanContext.Provider>
+    </CurrencyContext.Provider>
   );
 }

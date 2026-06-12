@@ -342,7 +342,7 @@ export default function OnboardingPage() {
                           inputMode="numeric"
                           value={dish.price}
                           onChange={(e) => updateDish(i, "price", e.target.value)}
-                          placeholder="Prix (FCFA)"
+                          placeholder="Prix"
                           className="border border-slate-200 rounded-xl px-3 py-3 text-base focus:outline-none focus:ring-2 focus:ring-orange-400"
                         />
                       </div>
